@@ -1,5 +1,5 @@
 # Makefile.mk
-Single file Makefile include to allows defining C++ makefiles with simple variable assignments.<br>
+Single-file makefile include that allows defining C++ makefiles with simple variable assignments.<br>
 Can be used for building binaries, shared/static libraries, and unit tests (auto execute when building).
 See Makefile.mk comments for variable parameters.
 
