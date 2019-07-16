@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.0 (2019/4/10)
+# Makefile.mk - version 1.1 (2019/7/7)
 # Copyright (C) 2019 Richard Bradley
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -77,12 +77,13 @@
 #  CLEAN_EXTRA     extra files to delete for 'clean' target
 #  CLOBBER_EXTRA   extra files to delete for 'clobber' target
 #  SUBDIRS         sub-directories to also make with base targets
+#  SYMLINKS        symlinks to the current dir to create for building
 #
 
 #### Shell Commands ####
 SHELL = /bin/sh
 PKGCONF ?= pkg-config
-RM ?= rm -f
+RM ?= rm -f --
 
 
 #### Basic Settings ####
@@ -115,6 +116,7 @@ BIN_OUTPUT_DIR ?= $(OUTPUT_DIR)
 CLEAN_EXTRA ?=
 CLOBBER_EXTRA ?=
 SUBDIRS ?=
+SYMLINKS ?=
 
 # apply *_EXTRA setting values
 $(foreach x,PACKAGES INCLUDE LIBS TEST_PACKAGES TEST_LIBS DEFINE OPTIMIZE DEBUG PROFILE FLAGS WARN WARN_C,$(if $($x_EXTRA),$(eval override $x += $$($x_EXTRA))))
@@ -181,13 +183,13 @@ endif
 pkg_n = $(word 1,$(subst :, ,$1))
 pkg_v = $(word 2,$(subst :, ,$1))
 check_pkgs = \
-$(foreach x,$($1),\
+$(strip $(foreach x,$($1),\
   $(if $(shell $(PKGCONF) $(call pkg_n,$x) $(if $(call pkg_v,$x),--atleast-version=$(call pkg_v,$x),--exists) && echo "1"),\
     $(call pkg_n,$x),\
-    $(warning $1: package '$(call pkg_n,$x)'$(if $(call pkg_v,$x), [version >= $(call pkg_v,$x)]) not found)))
+    $(warning $1: package '$(call pkg_n,$x)'$(if $(call pkg_v,$x), [version >= $(call pkg_v,$x)]) not found))))
 
 ifneq ($(strip $(PACKAGES)),)
-  override pkgs := $(strip $(call check_pkgs,PACKAGES))
+  override pkgs := $(call check_pkgs,PACKAGES)
   ifneq ($(pkgs),)
     override FLAGS += $(shell $(PKGCONF) $(pkgs) --cflags)
     override LIBS += $(shell $(PKGCONF) $(pkgs) --libs)
@@ -195,7 +197,7 @@ ifneq ($(strip $(PACKAGES)),)
 endif
 
 ifneq ($(strip $(TEST_PACKAGES)),)
-  override test_pkgs := $(strip $(call check_pkgs,TEST_PACKAGES))
+  override test_pkgs := $(call check_pkgs,TEST_PACKAGES)
   ifneq ($(test_pkgs),)
     override TEST_LIBS += $(shell $(PKGCONF) $(test_pkgs) --libs)
   endif
@@ -229,11 +231,17 @@ else ifeq ($$(strip $$($1.SRC)),)
 else ifneq ($$(words $$($1.SRC)),$$(words $$(sort $$($1.SRC))))
   $$(error $1.SRC: duplicate source files)
 endif
-override $1.src_objs := $$(addsuffix .o,$$(call src_base,$$($1.SRC)))
+override $1_src_objs := $$(addsuffix .o,$$(call src_base,$$($1.SRC)))
 endef
 $(foreach x,$(all_labels),$(eval $(call check_entry,$x)))
 
+define check_bin_entry  # <1:bin label>
+$$(foreach x,$$(filter-out %.SRC %.OBJS %.LIBS,$$(filter $1.%,$$(.VARIABLES))),$$(warning Unknown binary paramater: $$x))
+endef
+$(foreach x,$(bin_labels),$(eval $(call check_bin_entry,$x)))
+
 define check_lib_entry  # <1:lib label>
+$$(foreach x,$$(filter-out %.TYPE %.SRC %.OBJS %.LIBS,$$(filter $1.%,$$(.VARIABLES))),$$(warning Unknown library paramater: $$x))
 ifneq ($$(filter %.a %.so,$$($1)),)
   $$(error $1: library names should not be specified with an extension)
 else ifneq ($$(filter-out static shared,$$($1.TYPE)),)
@@ -243,6 +251,11 @@ else ifeq ($$(strip $$($1.TYPE)),)
 endif
 endef
 $(foreach x,$(lib_labels),$(eval $(call check_lib_entry,$x)))
+
+define check_test_entry  # <1:test label>
+$$(foreach x,$$(filter-out %.ARGS %.SRC %.OBJS %.LIBS,$$(filter $1.%,$$(.VARIABLES))),$$(warning Unknown test paramater: $$x))
+endef
+$(foreach x,$(test_labels),$(eval $(call check_test_entry,$x)))
 
 static_lib_labels := $(strip $(foreach x,$(lib_labels),$(if $(filter static,$($x.TYPE)),$x)))
 shared_lib_labels := $(strip $(foreach x,$(lib_labels),$(if $(filter shared,$($x.TYPE)),$x)))
@@ -308,13 +321,13 @@ else ifneq ($(build_env),)
   $(foreach x,$(lib_labels) $(bin_labels) $(test_labels),$(eval override $$x:=$$($x)$(SFX)))
 
   # generate target names based on environment/output dir
-  $(foreach x,$(bin_labels),$(eval override $$x.target:=$$(bin_out)$$($$x)))
-  $(foreach x,$(lib_labels),$(eval override $$x.target:=$$(lib_out)$$($$x)))
+  $(foreach x,$(bin_labels),$(eval override $$x_target:=$$(bin_out)$$($$x)))
+  $(foreach x,$(lib_labels),$(eval override $$x_target:=$$(lib_out)$$($$x)))
 
   # binaries/tests are dependent on libs to make sure libs are built first
   lib_goals := \
-    $(foreach x,$(static_lib_labels),$(if $(filter $x$(SFX) $($x.target) $($x.target).a,$($(build_env)_goals)),$($x.target).a)) \
-    $(foreach x,$(shared_lib_labels),$(if $(filter $x$(SFX) $($x.target) $($x.target).so,$($(build_env)_goals)),$($x.target).so))
+    $(foreach x,$(static_lib_labels),$(if $(filter $x$(SFX) $($x_target) $($x_target).a,$($(build_env)_goals)),$($x_target).a)) \
+    $(foreach x,$(shared_lib_labels),$(if $(filter $x$(SFX) $($x_target) $($x_target).so,$($(build_env)_goals)),$($x_target).so))
 endif
 
 bold1 := $(shell setterm --bold on)
@@ -334,15 +347,15 @@ tests_$1: $$($1_tests)
 
 clean_$1:
 	@for D in "$$(BUILD_DIR)/$1" "$$(BUILD_DIR)/$1-pic"; do \
-	  ([ -d "$$$$D" ] && echo "$$(bold1)Cleaning '$$$$D'$$(bold0)" && $$(RM) "$$$$D"/*.mk "$$$$D"/*.o "$$$$D"/__TEST* "$$$$D"/.compile_cmd* "$$$$D"/.link_cmd* && rmdir "$$$$D") || true; done
+	  ([ -d "$$$$D" ] && echo "$$(bold1)Cleaning '$$$$D'$$(bold0)" && $$(RM) "$$$$D"/*.mk "$$$$D"/*.o "$$$$D"/__TEST* "$$$$D"/.compile_cmd* "$$$$D"/.link_cmd* && rmdir -- "$$$$D") || true; done
 
 clean: clean_$1
 endef
 $(foreach x,$(env_names),$(eval $(call setup_env_targets,$x)))
 
 clean:
-	@$(RM) "$(BUILD_DIR)/.compiler_ver"
-	@([ -d "$(BUILD_DIR)" ] && rmdir -p "$(BUILD_DIR)") || true
+	@$(RM) "$(BUILD_DIR)/.compiler_ver" "$(BUILD_DIR)/.packages_ver" "$(BUILD_DIR)/.test_packages_ver" $(foreach x,$(SYMLINKS),"$x")
+	@([ -d "$(BUILD_DIR)" ] && rmdir -p -- "$(BUILD_DIR)") || true
 	@for X in $(CLEAN_EXTRA); do \
 	  ([ -f "$$X" ] && echo "$(bold1)Removing '$$X'$(bold0)" && $(RM) "$$X") || true; done
 
@@ -350,10 +363,10 @@ clobber: clean
 	@for X in $(foreach x,$(env_names),$($x_libs) $($x_bins)) core gmon.out $(CLOBBER_EXTRA); do \
 	  ([ -f "$$X" ] && echo "$(bold1)Removing '$$X'$(bold0)" && $(RM) "$$X") || true; done
 ifneq ($(lib_out),)
-	@([ -d "$(lib_out)" ] && rmdir -p --ignore-fail-on-non-empty "$(lib_out)") || true
+	@([ -d "$(lib_out)" ] && rmdir -p --ignore-fail-on-non-empty -- "$(lib_out)") || true
 endif
 ifneq ($(bin_out),)
-	@([ -d "$(bin_out)" ] && rmdir -p --ignore-fail-on-non-empty "$(bin_out)") || true
+	@([ -d "$(bin_out)" ] && rmdir -p --ignore-fail-on-non-empty -- "$(bin_out)") || true
 endif
 
 install: ; $(error Target 'install' not implemented)
@@ -376,61 +389,61 @@ endif
 .DEFAULT: ; $(error $(if $(filter $<,$(all_source)),Missing source file '$<','$<' unknown))
 
 
-#### Build Template Functions ####
+#### Build Functions ####
 define rebuild_check  # <1:trigger text> <2:trigger file>
 ifneq ($1,$$(file <$2))
   $$(shell $$(RM) "$2")
 endif
 $2:
 	@mkdir -p "$$(@D)"
-	@echo "$1" >$2
+	@echo -n "$1" >$2
 endef
 
 define make_static_lib  # <1:label> <2:path>
-override $1.all_objs := $$(addprefix $2/,$$($1.src_objs)) $$($1.OBJS)
-override $1.link_static_cmd := $$(AR) rv $$($1.target).a $$(strip $$($1.all_objs))
-override $1.file := $2/.link_cmd-$1-static
-$$(eval $$(call rebuild_check,$$$$($1.link_static_cmd),$$($1.file)))
+override $1_all_objs := $$(addprefix $2/,$$($1_src_objs)) $$($1.OBJS)
+override $1_link_static_cmd := $$(AR) rv $$($1_target).a $$(strip $$($1_all_objs))
+override $1_file := $2/.link_cmd-$1-static
+$$(eval $$(call rebuild_check,$$$$($1_link_static_cmd),$$$$($1_file)))
 
-$$($1.target) $1$$(SFX): $$($1.target).a
-$$($1.target).a: $$($1.all_objs) $$($1.file)
+$$($1_target) $1$$(SFX): $$($1_target).a
+$$($1_target).a: $$($1_all_objs) $$($1_file)
 ifneq ($$(lib_out),)
 	@mkdir -p "$$(lib_out)"
 endif
 	-$$(RM) "$$@"
-	$$($1.link_static_cmd)
+	$$($1_link_static_cmd)
 	$$(RANLIB) "$$@"
 	@echo "$$(bold1)Static library '$$@' built$$(bold0)"
 endef
 
 define make_shared_lib  # <1:label> <2:path>
-override $1.all_objs := $$(addprefix $2/,$$($1.src_objs)) $$($1.OBJS)
-override $1.link_shared_cmd := $$(link_cmd) -fPIC -shared $$(strip $$($1.all_objs) $$($1.LIBS) $$(LIBS)) -o '$$($1.target).so'
-override $1.file := $2/.link_cmd-$1-shared
-$$(eval $$(call rebuild_check,$$$$($1.link_shared_cmd),$$($1.file)))
+override $1_all_objs := $$(addprefix $2/,$$($1_src_objs)) $$($1.OBJS)
+override $1_link_shared_cmd := $$(link_cmd) -fPIC -shared $$(strip $$($1_all_objs) $$($1.LIBS) $$(LIBS)) -o '$$($1_target).so'
+override $1_file := $2/.link_cmd-$1-shared
+$$(eval $$(call rebuild_check,$$$$($1_link_shared_cmd),$$$$($1_file)))
 
-$$($1.target) $1$$(SFX): $$($1.target).so
-$$($1.target).so: $$($1.all_objs) $$($1.file)
+$$($1_target) $1$$(SFX): $$($1_target).so
+$$($1_target).so: $$($1_all_objs) $$($1_file)
 ifneq ($$(lib_out),)
 	@mkdir -p "$$(lib_out)"
 endif
-	$$($1.link_shared_cmd)
+	$$($1_link_shared_cmd)
 	@echo "$$(bold1)Shared library '$$@' built$$(bold0)"
 endef
 
 define make_bin  # <1:label> <2:path>
-override $1.all_objs := $$(addprefix $2/,$$($1.src_objs)) $$($1.OBJS)
-override $1.link_cmd := $$(link_cmd) $$(strip $$($1.all_objs) $$($1.LIBS) $$(LIBS)) -o '$$($1.target)'
-override $1.file := $2/.link_cmd-$1
-$$(eval $$(call rebuild_check,$$$$($1.link_cmd),$$($1.file)))
+override $1_all_objs := $$(addprefix $2/,$$($1_src_objs)) $$($1.OBJS)
+override $1_link_cmd := $$(link_cmd) $$(strip $$($1_all_objs) $$($1.LIBS) $$(LIBS)) -o '$$($1_target)'
+override $1_file := $2/.link_cmd-$1
+$$(eval $$(call rebuild_check,$$$$($1_link_cmd),$$$$($1_file)))
 
 .PHONY: $1$$(SFX)
-$1$$(SFX): $$($1.target)
-$$($1.target): $$($1.all_objs) $$(lib_goals) $$($1.file)
+$1$$(SFX): $$($1_target)
+$$($1_target): $$($1_all_objs) $$(lib_goals) $$($1_file)
 ifneq ($$(bin_out),)
 	@mkdir -p "$$(bin_out)"
 endif
-	$$($1.link_cmd)
+	$$($1_link_cmd)
 	@echo "$$(bold1)Binary '$$@' built$$(bold0)"
 endef
 
@@ -440,36 +453,45 @@ endef
 # - always execute test binary if a test target was specified otherwise only
 #     run test if rebuilt
 define make_test  # <1:label> <2:path>
-override $1.run := $2/__$1
-override $1.all_objs := $$(addprefix $2/,$$($1.src_objs)) $$($1.OBJS)
-override $1.link_cmd := $$(link_cmd) $$(strip $$($1.all_objs) $$($1.LIBS) $$(LIBS) $$(TEST_LIBS)) -o '$$($1.run)'
-override $1.file := $2/.link_cmd-$1
-$$(eval $$(call rebuild_check,$$$$($1.link_cmd),$$($1.file)))
+override $1_run := $2/__$1
+override $1_all_objs := $$(addprefix $2/,$$($1_src_objs)) $$($1.OBJS)
+override $1_link_cmd := $$(link_cmd) $$(strip $$($1_all_objs) $$($1.LIBS) $$(LIBS) $$(TEST_LIBS)) -o '$$($1_run)'
+override $1_file := $2/.link_cmd-$1
+$$(eval $$(call rebuild_check,$$$$($1_link_cmd),$$$$($1_file)))
 
-$$($1.run): $$($1.all_objs) $$(lib_goals) $$($1.file)
-	$$($1.link_cmd)
+$$($1_run): $$($1_all_objs) $$(lib_goals) $$($1_file) $$(BUILD_DIR)/.test_packages_ver
+	$$($1_link_cmd)
 ifeq ($$(filter tests tests_$$(build_env) $1 $$($1),$$(MAKECMDGOALS)),)
-	@LD_LIBRARY_PATH=.:$$$$LD_LIBRARY_PATH ./$$($1.run) $$($1.ARGS)
+	@LD_LIBRARY_PATH=.:$$$$LD_LIBRARY_PATH ./$$($1_run) $$($1.ARGS)
 	@echo "$$(bold1)Test '$$($1)' passed$$(bold0)"
 endif
 
 .PHONY: $$($1) $1$$(SFX)
-$$($1) $1$$(SFX): $$($1.run)
+$$($1) $1$$(SFX): $$($1_run)
 ifneq ($$(filter tests tests_$$(build_env) $1 $$($1),$$(MAKECMDGOALS)),)
-	@LD_LIBRARY_PATH=.:$$$$LD_LIBRARY_PATH ./$$($1.run) $$($1.ARGS)
+	@LD_LIBRARY_PATH=.:$$$$LD_LIBRARY_PATH ./$$($1_run) $$($1.ARGS)
 	@echo "$$(bold1)Test '$$($1)' passed$$(bold0)"
 endif
 endef
 
 
-define make_obj  # <1:path> <2:source pattern> <3:compile cmd> <4:trigger file>
-$$(eval $$(call rebuild_check,$3,$1/$4))
-$1/%.o: $2 ; $3 -MMD -MP -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
+define make_dep  # <1:path> <2:source file> <3:trigger file>
+$1/$(call src_base,$2).o: $2 $1/$3 $$(BUILD_DIR)/.compiler_ver $$(BUILD_DIR)/.packages_ver | $$(SYMLINKS)
+-include $1/$(call src_base,$2).mk
 endef
 
-define make_dep  # <1:source file> <2:path> <3:trigger file>
-$2/$(call src_base,$1).o: $1 $2/$3 $$(BUILD_DIR)/.compiler_ver
--include $2/$(call src_base,$1).mk
+define make_obj # <1:path> <2:c cmd> <3:c++ cmd> <4:source files>
+ifneq ($4,)
+$1/%.mk: ; @$$(RM) "$$(@:.mk=.o)"
+
+$$(eval $$(call rebuild_check,$2,$1/.compile_cmd_c))
+$1/%.o: %.c ; $2 -MMD -MP -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
+$(foreach x,$(filter %.c,$4),$$(eval $$(call make_dep,$1,$x,.compile_cmd_c)))
+
+$$(eval $$(call rebuild_check,$3,$1/.compile_cmd))
+$1/%.o: ; $3 -MMD -MP -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
+$(foreach x,$(filter-out %.c,$4),$$(eval $$(call make_dep,$1,$x,.compile_cmd)))
+endif
 endef
 
 
@@ -482,38 +504,30 @@ ifneq ($(build_env),)
     endif
   endif
 
-  build_path := $(BUILD_DIR)/$(build_env)
-  build_path_pic := $(build_path)-pic
+  # symlink creation rule
+  $(foreach x,$(SYMLINKS),$(eval $x: ; @ln -s . "$x"))
 
   # .compiler_ver rule (rebuild trigger for compiler version upgrades)
   $(eval $(call rebuild_check,$(shell $(CC) --version | head -1),$(BUILD_DIR)/.compiler_ver))
 
+  # .packages_ver rule (rebuild trigger for package version changes)
+  $(eval $(call rebuild_check,$(foreach x,$(pkgs),$x:$(shell $(PKGCONF) --modversion $x)),$(BUILD_DIR)/.packages_ver))
+
+  # .test_packages_ver rule (relink trigger for test binaries)
+  $(eval $(call rebuild_check,$(foreach x,$(test_pkgs),$x:$(shell $(PKGCONF) --modversion $x)),$(BUILD_DIR)/.test_packages_ver))
+
   # make binary/library/test build targets
+  build_path := $(BUILD_DIR)/$(build_env)
+  build_path_pic := $(build_path)-pic
   .PHONY: $(foreach x,$(lib_labels),$($x) $x$(SFX))
   $(foreach x,$(static_lib_labels),$(eval $(call make_static_lib,$x,$(build_path))))
   $(foreach x,$(shared_lib_labels),$(eval $(call make_shared_lib,$x,$(build_path_pic))))
-
   $(foreach x,$(bin_labels),$(eval $(call make_bin,$x,$(build_path))))
   $(foreach x,$(test_labels),$(eval $(call make_test,$x,$(build_path))))
 
-  # set generic .o/.mk rules for each build directory
-  $(build_path)/%.mk $(build_path_pic)/%.mk: ; @$(RM) "$(@:.mk=.o)"
-  $(eval $(call make_obj,$(build_path),%.c,$(compile_cmd_c),.compile_cmd_c))
-  $(eval $(call make_obj,$(build_path_pic),%.c,$(compile_cmd_c) -fPIC,.compile_cmd_c))
-  $(eval $(call make_obj,$(build_path),,$(compile_cmd),.compile_cmd))
-  $(eval $(call make_obj,$(build_path_pic),,$(compile_cmd) -fPIC,.compile_cmd))
-
-  # set base dependency rules for building each .o/.mk file and then
-  #   include .mk files with header file dependency details
-  # NOTE: rebuild trigger dependency is after the source file so the source
-  #   file is always the first dependency of the object file ('$<' value)
-  source := $(sort $(foreach x,$(static_lib_labels) $(bin_labels) $(test_labels),$($x.SRC)))
-  source_pic := $(sort $(foreach x,$(shared_lib_labels),$($x.SRC)))
-
-  $(foreach x,$(filter %.c,$(source)),$(eval $(call make_dep,$x,$(build_path),.compile_cmd_c)))
-  $(foreach x,$(filter %.c,$(source_pic)),$(eval $(call make_dep,$x,$(build_path_pic),.compile_cmd_c)))
-  $(foreach x,$(filter-out %.c,$(source)),$(eval $(call make_dep,$x,$(build_path),.compile_cmd)))
-  $(foreach x,$(filter-out %.c,$(source_pic)),$(eval $(call make_dep,$x,$(build_path_pic),.compile_cmd)))
+  # make .o/.mk files for each build path
+  $(eval $(call make_obj,$(build_path),$(compile_cmd_c),$(compile_cmd),$(sort $(foreach x,$(static_lib_labels) $(bin_labels) $(test_labels),$($x.SRC)))))
+  $(eval $(call make_obj,$(build_path_pic),$(compile_cmd_c) -fPIC,$(compile_cmd) -fPIC,$(sort $(foreach x,$(shared_lib_labels),$($x.SRC)))))
 endif
 
 #### END ####
