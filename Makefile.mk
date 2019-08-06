@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.1 (2019/7/7)
+# Makefile.mk - revision 1.1.1 (2019/8/1)
 # Copyright (C) 2019 Richard Bradley
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -400,34 +400,34 @@ $2:
 endef
 
 define make_static_lib  # <1:label> <2:path>
-override $1_all_objs := $$(addprefix $2/,$$($1_src_objs)) $$($1.OBJS)
-override $1_link_static_cmd := $$(AR) rv $$($1_target).a $$(strip $$($1_all_objs))
-override $1_file := $2/.link_cmd-$1-static
-$$(eval $$(call rebuild_check,$$$$($1_link_static_cmd),$$$$($1_file)))
+override $1_static_objs := $$(addprefix $2/,$$($1_src_objs)) $$($1.OBJS)
+override $1_static_link_cmd := $$(AR) rv $$($1_target).a $$(strip $$($1_static_objs))
+override $1_static_file := $2/.link_cmd-$1-static
+$$(eval $$(call rebuild_check,$$$$($1_static_link_cmd),$$$$($1_static_file)))
 
 $$($1_target) $1$$(SFX): $$($1_target).a
-$$($1_target).a: $$($1_all_objs) $$($1_file)
+$$($1_target).a: $$($1_static_objs) $$($1_static_file)
 ifneq ($$(lib_out),)
 	@mkdir -p "$$(lib_out)"
 endif
 	-$$(RM) "$$@"
-	$$($1_link_static_cmd)
+	$$($1_static_link_cmd)
 	$$(RANLIB) "$$@"
 	@echo "$$(bold1)Static library '$$@' built$$(bold0)"
 endef
 
 define make_shared_lib  # <1:label> <2:path>
-override $1_all_objs := $$(addprefix $2/,$$($1_src_objs)) $$($1.OBJS)
-override $1_link_shared_cmd := $$(link_cmd) -fPIC -shared $$(strip $$($1_all_objs) $$($1.LIBS) $$(LIBS)) -o '$$($1_target).so'
-override $1_file := $2/.link_cmd-$1-shared
-$$(eval $$(call rebuild_check,$$$$($1_link_shared_cmd),$$$$($1_file)))
+override $1_shared_objs := $$(addprefix $2/,$$($1_src_objs)) $$($1.OBJS)
+override $1_shared_link_cmd := $$(link_cmd) -fPIC -shared $$(strip $$($1_shared_objs) $$($1.LIBS) $$(LIBS)) -o '$$($1_target).so'
+override $1_shared_file := $2/.link_cmd-$1-shared
+$$(eval $$(call rebuild_check,$$$$($1_shared_link_cmd),$$$$($1_shared_file)))
 
 $$($1_target) $1$$(SFX): $$($1_target).so
-$$($1_target).so: $$($1_all_objs) $$($1_file)
+$$($1_target).so: $$($1_shared_objs) $$($1_shared_file)
 ifneq ($$(lib_out),)
 	@mkdir -p "$$(lib_out)"
 endif
-	$$($1_link_shared_cmd)
+	$$($1_shared_link_cmd)
 	@echo "$$(bold1)Shared library '$$@' built$$(bold0)"
 endef
 

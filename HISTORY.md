@@ -1,5 +1,8 @@
 # Version release history
-* 1.1
+* 1.1.1 - minor bug fix release
+   * fixed issues with building both shared & static version of a library
+
+* 1.1 - feature release
    * added warnings for unknown binary/library/test parameter variables<br>(for example, setting 'BIN1.OBJ' will trigger a warning since the correct variable is 'BIN1.OBJS')
    * PACKAGES changes or package version changes trigger a full rebuild
    * TEST_PACKAGES changes or test package version changes trigger a relink/run of all tests
