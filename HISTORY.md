@@ -8,8 +8,7 @@
       * magenta - file removed, warning
       * green - test passed
       * red - test failed
-* unit tests are forced to build/execute after binary builds
-  (previously they were only forced to run after library builds like binaries)
+   * unit tests are forced to build/execute after binary builds<br>(previously they were only forced to run after library builds like binaries)
 
 * 1.1.1 - minor bug fix release
    * fixed issues with building both shared & static version of a library
