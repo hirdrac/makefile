@@ -1,4 +1,18 @@
 # Version release history
+* 1.3 - feature release
+   * binary/library/test specific compile configs possible:
+      * BIN1.DEFINE - overrides DEFINE for BIN1 only
+      * BIN1.INCLUDE
+      * BIN1.FLAGS
+      * BIN1.PACKAGES
+      * BIN1.CXXFLAGS
+      * BIN1.CFLAGS
+      * if any of these options are used, all objects for the target are built in a separate build directory and not shared with other binary/library/test targets
+   * STANDARD specified flags (-std=xxx) are part for normal CXXFLAGS/CFLAGS now and not added to CXX/CC variables (this only matters if you explicitly override CXXFLAGS/CFLAGS)
+   * Added TEST_FLAGS settings to allow test only compile flags
+   * TEST_PACKAGES can now set test only compile flags and not just libraries
+   * Target specific LIBS config (i.e. BIN1.LIBS) now overrides default 'LIBS' config instead of just adding additional libraries to link with (this behavior matches other target specific configs added in this release)
+
 * 1.2 - feature release
    * added LIBx.VERSION setting for adding major/minor/patch version to shared libraries built.  If version is specified, symlinks are created for .so & .so.MAJOR_VERSION version(s) of the shared library
    * added additional target aliases for binaries/libraries when building with OUTPUT_DIR/LIB_OUTPUT_DIR/BIN_OUTPUT_DIR set
