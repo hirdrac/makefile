@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.3 (2019/9/20)
+# Makefile.mk - version 1.3 (2019/10/4)
 # Copyright (C) 2019 Richard Bradley
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -604,7 +604,7 @@ ifneq ($(build_env),)
   $(foreach x,$(test_labels),$(eval $(call make_test,$x)))
 
   # make .o/.mk files for each build path
-  $(foreach b,$(sort $(foreach x,$(static_lib_lables) $(bin_labels) $(test_labels),$($x_build))),\
+  $(foreach b,$(sort $(foreach x,$(static_lib_labels) $(bin_labels) $(test_labels),$($x_build))),\
     $(eval $(call make_obj,\
       $$(BUILD_DIR)/$b,\
       $(strip $(CC) $(CFLAGS_$b)),\
