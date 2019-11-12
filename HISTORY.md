@@ -1,4 +1,16 @@
 # Version release history
+* 1.4 - general release
+   * 'ENV' is set with the current build environment, 'SFX' with the binary suffix.  Both variables can be used with OUTPUT_DIR/LIB_OUTPUT_DIR/BIN_OUTPUT_DIR settings to allow for different directories based on build environment.
+   * If debug/gprof environment lib/bin output directories are unique (not shared with any other environments) then the binary suffix will be omitted.
+   * If building non-release target(s), aliases without binary suffix are created to simplify dependency rules.
+   * Error checking added to prevent OUTPUT_DIR,LIB_OUTPUT_DIR,BIN_OUTPUT_DIR settings from containing spaces.
+   * Made static library (archive) building less verbose.
+   * Added support for source files with '../' in their path.
+   * TESTx-g, TESTx-pg targets now correctly run test binaries even if already built like TESTx targets do.
+   * Fixed object file rebuild trigger failures on Makefile config change.
+   * Fixed incorrect object file name in dependency file (dependency checks for header changes weren't working because of this).
+   * Fixed case where .c files were being compiled as c++ files if the source file was in a sub directory.
+
 * 1.3 - feature release
    * binary/library/test specific compile configs possible:
       * BIN1.DEFINE - overrides DEFINE for BIN1 only
