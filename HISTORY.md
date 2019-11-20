@@ -26,6 +26,7 @@ NEW FEATURES:
 * Error checking added to prevent OUTPUT_DIR,LIB_OUTPUT_DIR,BIN_OUTPUT_DIR settings from containing spaces.
 * Made static library (archive) building less verbose.
 * Added support for source files with '../' in their path.
+
 BUG FIXES:
 * TESTx-g, TESTx-pg targets now correctly run test binaries even if already built like TESTx targets do.
 * Fixed object file rebuild trigger failures on Makefile config change.
