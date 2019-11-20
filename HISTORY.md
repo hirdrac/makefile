@@ -1,5 +1,6 @@
 # Version release history
 ## 1.5 - feature release
+NEW FEATURES:
 * FILEx target added for creating targets from executing a command settings FILEx.CMD,FILEx.DEPS for file target creation command & dependencies.  Helper variables are set to simplify rule creation:<br>OUT  - same as 'FILEx' value<br>DEPS - same as 'FILEx.DEPS' value<br>DEPn - same as n-th value in 'FILEx.DEPS'
    * Config example:<br>FILE1 = parser.c<br>FILE1.DEPS = parser.y<br>FILE1.CMD = yacc $(DEPS) -o $(OUT)
 * Added 'TMP' output variable to reference an environment specific temporary directory inside the build directory that can be used for source generation (for FILEx targets).  All tmp contents are deleted by 'clean' rule.
@@ -18,12 +19,14 @@
 * Added minimum version check for make (required version is 4.2 or higher)
 
 ## 1.4 - general release
+NEW FEATURES:
 * 'ENV' is set with the current build environment, 'SFX' with the binary suffix.  Both variables can be used with OUTPUT_DIR/LIB_OUTPUT_DIR/BIN_OUTPUT_DIR settings to allow for different directories based on build environment.
 * If debug/gprof environment lib/bin output directories are unique (not shared with any other environments) then the binary suffix will be omitted.
 * If building non-release target(s), aliases without binary suffix are created to simplify dependency rules.
 * Error checking added to prevent OUTPUT_DIR,LIB_OUTPUT_DIR,BIN_OUTPUT_DIR settings from containing spaces.
 * Made static library (archive) building less verbose.
 * Added support for source files with '../' in their path.
+BUG FIXES:
 * TESTx-g, TESTx-pg targets now correctly run test binaries even if already built like TESTx targets do.
 * Fixed object file rebuild trigger failures on Makefile config change.
 * Fixed incorrect object file name in dependency file (dependency checks for header changes weren't working because of this).
