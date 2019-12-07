@@ -1,4 +1,24 @@
 # Version release history
+## 1.6 - general release
+NEW FEATURES:
+* <X>.DEPS (target specific file dependencies) setting added for BIN/LIB/TEST targets - previously only available for FILE/TEMPLATE.  This setting is useful for handling code generated headers where make can't resolve the exact path before compiling.
+* Added 'ALL_FILES' output variable (equivalent to '$(FILE1) $(FILE2) ...' for all files defined).  Useful for new <X>.DEPS setting.
+* WARN/WARN_C/INCLUDE/LIBS/DEFINE global & target specific settings no longer require compiler specific flags - if not specified, the compiler flag will automatically be added.  For example:
+   * DEFINE = NDEBUG  (equivalent to: DEFINE = -D'NDEBUG')
+   * INCLUDE = . include  (equivalent to: INCLUDE = -I. -Iinclude)
+   * LIBS = m -ldl X11 Xext  (equivalent to: LIBS = -lm -ldl -lX11 -lXext)
+   * WARN = all error  (equivalent to: WARN = -Wall -Werror)
+* Additionally for LIBS, if a non-compiler flag value is specified that contains a path, then both '-L' and '-l' flags are generated.  For example:
+   * LIBS = libs/custom  (equivalent to: LIBS = -Llibs/ -lcustom)
+
+CHANGES:
+* INCLUDE global setting no longer has a default value (was -I.) - if this breaks builds then add '.' to your current INCLUDE setting.
+* CXXFLAGS/CFLAGS/ASFLAGS/LDFLAGS global settings can now be set in the Makefile without using 'override' (settings not recommended for use since they will override all other settings that generate compiler flags).
+
+BUG FIXES:
+* When linking binaries/shared libraries/tests, 'LIBS' libraries are linked before 'PACKAGES' libraries.  This resolves a linking error when linking with static libraries (via the 'LIBS' setting) that require specific packages in the final binary target.
+* Spelling fixes to various error messages.
+
 ## 1.5 - feature release
 NEW FEATURES:
 * FILEx target added for creating targets from executing a command settings FILEx.CMD,FILEx.DEPS for file target creation command & dependencies.  Helper variables are set to simplify rule creation:<br>OUT  - same as 'FILEx' value<br>DEPS - same as 'FILEx.DEPS' value<br>DEPn - same as n-th value in 'FILEx.DEPS'
