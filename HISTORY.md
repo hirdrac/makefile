@@ -1,4 +1,16 @@
 # Version release history
+
+## 1.7 - general release
+NEW FEATURES:
+* Added target specific STANDARD config (i.e. BIN1.STANDARD = c++17)
+* Source files with .S/.sx extension recognized as assembly source.
+* An error is reported if target .SRC setting contains an invalid source file
+* Added help & info targets for printing command help & build target info
+
+CHANGES:
+* Targets with only C or ASM source will now link with the C compiler instead of always using the C++ compiler.
+* For color output, ANSI color codes are used directly if 'setterm' isn't available
+
 ## 1.6 - general release
 NEW FEATURES:
 * <X>.DEPS (target specific file dependencies) setting added for BIN/LIB/TEST targets - previously only available for FILE/TEMPLATE.  This setting is useful for handling code generated headers where make can't resolve the exact path before compiling.
