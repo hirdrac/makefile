@@ -1,5 +1,28 @@
 # Version release history
 
+## 1.8 - general release
+NEW FEATURES:
+* 'OPTIONS' config added manage common compiler options/features with simplified controls instead of specific compiler flags.  Target specific OPTIONS config also available (ex.: BIN1.OPTIONS).  Values currently supported:
+   * warn_error - make all compiler warnings into errors
+   * pthread - compile with pthreads support
+   * lto - enable link-time optimization
+   * modern_c++ - enable warnings for some old-style C++ syntax (pre C++11)
+   * no_rtti - disable C++ RTTI
+   * no_except - disable C++ exceptions
+* Target specific settings can be set to the value '-' to indicate that the setting is cleared for the target.
+* Added detection for multiple includes of Makefile.mk.
+
+CHANGES:
+* Renamed 'gprof' environment to 'profile'.
+* Added '_FORTIFY_SOURCE=1' define to default 'debug' environment config to enable additional checks for some glibc functions. (See 'man feature_test_macros' for details)
+* Package configs are no longer checked for non-build targets.
+* Improved STANDARD config error output.
+* Internal variables are prefixed with '_' to avoid collisions with the main Makefile.
+
+FIXES:
+* TEST_FLAGS/TEST_PACKAGES were being ignored for test targets with configs that caused an isolated build.  Fixed behavior has test target specific PACKAGES config overrides global PACKAGES/TEST_PACKAGES and test target specific FLAGS config overrides global FLAGS/TEST_FLAGS.
+* Fixed TEST_LIBS/TEST_PACKAGE configured libraries always being used for test targets even when target specific LIBS setting was set.
+
 ## 1.7 - general release
 NEW FEATURES:
 * Added target specific STANDARD config (i.e. BIN1.STANDARD = c++17)
