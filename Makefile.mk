@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.8 (2020/1/11)
+# Makefile.mk - version 1.9 (2020/2/8)
 # Copyright (C) 2020 Richard Bradley
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -73,6 +73,7 @@
 #
 #  COMPILER        compiler to use (gcc,clang)
 #  STANDARD        language standard(s) of source code
+#  OPT_LEVEL       optimization level for release & profile builds
 #  OPTIMIZE        compiler flags for release & profile builds
 #  DEBUG           compiler flags for debug builds
 #  PROFILE         compiler flags for profile builds
@@ -106,8 +107,8 @@
 #  SYMLINKS        symlinks to the current dir to create for building
 #  SOURCE_DIR      source files base directory
 #
-#  Settings STANDARD/PACKAGES/INCLUDE/LIBS/DEFINE/OPTIONS/FLAGS can be set
-#    for specific targets to override global values
+#  Settings STANDARD/OPT_LEVEL/PACKAGES/INCLUDE/LIBS/DEFINE/OPTIONS/FLAGS can
+#    be set for specific targets to override global values
 #    (ex.: BIN1.FLAGS = -pthread).
 #    A value of '-' can be used to clear the setting for the target
 #
@@ -140,7 +141,9 @@ RM ?= rm -f --
 #### Basic Settings ####
 COMPILER ?= $(firstword $(compiler_names))
 STANDARD ?=
-OPTIMIZE ?= -O3
+OPT_LEVEL ?= 3
+
+OPTIMIZE ?= -O$(or $(if $1,$($1.OPT_LEVEL)),$(OPT_LEVEL))
 DEBUG ?= -g -O1 -DDEBUG -D_FORTIFY_SOURCE=1
 PROFILE ?= -pg
 ifndef WARN
@@ -157,7 +160,7 @@ OPTIONS ?=
 FLAGS ?=
 TEST_PACKAGES ?=
 TEST_LIBS ?=
-TEST_FLAGS?=
+TEST_FLAGS ?=
 
 BUILD_DIR ?= build
 DEFAULT_ENV ?= $(firstword $(env_names))
@@ -327,6 +330,7 @@ $(eval $(call check_options,OPTIONS,))
 
 
 #### Internal Calculated Values ####
+override _comma := ,
 override _digits := 1 2 3 4 5 6 7 8 9
 override _1-99 := $(_digits) $(foreach x,$(_digits),$(addprefix $x,0 $(_digits)))
 
@@ -400,13 +404,13 @@ endef
 $(foreach x,$(_src_labels),$(eval $(call check_entry,$x)))
 
 override define check_bin_entry  # <1:bin label>
-$$(foreach x,$$(filter-out %.SRC %.OBJS %.LIBS %.STANDARD %.DEFINE %.INCLUDE %.FLAGS %.PACKAGES %.OPTIONS %.CXXFLAGS %.CFLAGS %.ASFLAGS %.DEPS,$$(filter $1.%,$$(.VARIABLES))),\
+$$(foreach x,$$(filter-out %.SRC %.OBJS %.LIBS %.STANDARD %.OPT_LEVEL %.DEFINE %.INCLUDE %.FLAGS %.PACKAGES %.OPTIONS %.CXXFLAGS %.CFLAGS %.ASFLAGS %.DEPS,$$(filter $1.%,$$(.VARIABLES))),\
   $$(warning $$(_warn)Unknown binary parameter '$$x'$$(_end)))
 endef
 $(foreach x,$(_bin_labels),$(eval $(call check_bin_entry,$x)))
 
 override define check_lib_entry  # <1:lib label>
-$$(foreach x,$$(filter-out %.TYPE %.SRC %.OBJS %.LIBS %.VERSION %.STANDARD %.DEFINE %.INCLUDE %.FLAGS %.PACKAGES %.OPTIONS %.CXXFLAGS %.CFLAGS %.ASFLAGS %.DEPS,$$(filter $1.%,$$(.VARIABLES))),\
+$$(foreach x,$$(filter-out %.TYPE %.SRC %.OBJS %.LIBS %.VERSION %.STANDARD %.OPT_LEVEL %.DEFINE %.INCLUDE %.FLAGS %.PACKAGES %.OPTIONS %.CXXFLAGS %.CFLAGS %.ASFLAGS %.DEPS,$$(filter $1.%,$$(.VARIABLES))),\
   $$(warning $$(_warn)Unknown library parameter '$$x'$$(_end)))
 ifneq ($$(filter %.a %.so,$$($1)),)
   $$(error $$(_err)$1: library names should not be specified with an extension$$(_end))
@@ -417,7 +421,7 @@ endef
 $(foreach x,$(_lib_labels),$(eval $(call check_lib_entry,$x)))
 
 override define check_test_entry  # <1:test label>
-$$(foreach x,$$(filter-out %.ARGS %.SRC %.OBJS %.LIBS %.STANDARD %.DEFINE %.INCLUDE %.FLAGS %.PACKAGES %.OPTIONS %.CXXFLAGS %.CFLAGS %.ASFLAGS %.DEPS,$$(filter $1.%,$$(.VARIABLES))),\
+$$(foreach x,$$(filter-out %.ARGS %.SRC %.OBJS %.LIBS %.STANDARD %.OPT_LEVEL %.DEFINE %.INCLUDE %.FLAGS %.PACKAGES %.OPTIONS %.CXXFLAGS %.CFLAGS %.ASFLAGS %.DEPS,$$(filter $1.%,$$(.VARIABLES))),\
   $$(warning $$(_warn)Unknown test parameter '$$x'$$(_end)))
 endef
 $(foreach x,$(_test_labels),$(eval $(call check_test_entry,$x)))
@@ -593,7 +597,7 @@ else ifneq ($(_build_env),)
   endif
 
   override _$1_test_flags := $$(if $$(filter $1,$$(_test_labels)),$$(strip $$(if $$($1.PACKAGES),,$$(_test_pkg_flags)) $$(if $$($1.FLAGS),,$$(TEST_FLAGS))))
-  override _$1_build_sfx := $$(if $$(or $$($1.STANDARD),$$($1.DEFINE),$$($1.INCLUDE),$$($1.PACKAGES),$$($1.OPTIONS),$$($1.FLAGS),$$($1.CXXFLAGS),$$($1.CFLAGS),$$($1.ASFLAGS),$$($1.DEPS)),-$1)
+  override _$1_build_sfx := $$(if $$(or $$($1.STANDARD),$$($1.OPT_LEVEL),$$($1.DEFINE),$$($1.INCLUDE),$$($1.PACKAGES),$$($1.OPTIONS),$$($1.FLAGS),$$($1.CXXFLAGS),$$($1.CFLAGS),$$($1.ASFLAGS),$$($1.DEPS)),-$1)
   override _$1_build := $$(ENV)$$(or $$(_$1_build_sfx),$$(if $$(_$1_test_flags),-tests))
   ifneq (_$1_build_sfx,)
     ifeq ($$($1.DEFINE),)
@@ -617,9 +621,9 @@ else ifneq ($(_build_env),)
       override _$1_flags := $$(_$1_pkg_flags) $$(_$1_test_flags)
     endif
 
-    override _cxxflags_$$(_$1_build) := $$(or $$($1.CXXFLAGS),$$(_$1_cxx_std) $$($$(ENV)_flags) $$(call format_warn,$$(WARN)) $$(_$1_op_cxx_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_cxx_flags) $$(_$1_flags))
-    override _cflags_$$(_$1_build) := $$(or $$($1.CFLAGS),$$(_$1_cc_std) $$($$(ENV)_flags) $$(call format_warn,$$(WARN_C)) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_flags))
-    override _asflags_$$(_$1_build) := $$(or $$($1.ASFLAGS),$$($$(ENV)_flags) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_flags))
+    override _cxxflags_$$(_$1_build) := $$(or $$($1.CXXFLAGS),$$(_$1_cxx_std) $$(call $$(ENV)_flags,$1) $$(call format_warn,$$(WARN)) $$(_$1_op_cxx_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_cxx_flags) $$(_$1_flags))
+    override _cflags_$$(_$1_build) := $$(or $$($1.CFLAGS),$$(_$1_cc_std) $$(call $$(ENV)_flags,$1) $$(call format_warn,$$(WARN_C)) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_flags))
+    override _asflags_$$(_$1_build) := $$(or $$($1.ASFLAGS),$$(call $$(ENV)_flags,$1) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_flags))
   endif
   endef
   $(foreach x,$(_src_labels),$(eval $(call build_entry,$x)))
@@ -669,8 +673,8 @@ else ifneq ($(_build_env),)
   $(foreach x,$(_static_lib_labels),\
     $(eval override _$x_aliases := $x$(SFX) $($x)$(SFX) $(if $(_$(ENV)_libdir),$($x)$(SFX).a) $(if $(SFX),$x $($x) $($x).a)))
   $(foreach x,$(_shared_lib_labels),\
-    $(eval override _$x_shared_lib_ver := $(_$x_shared_lib)$(if $($x.VERSION),.$($x.VERSION)))\
-    $(eval override _$x_shared_name := $(_$(ENV)_libdir)$(_$x_shared_lib_ver))\
+    $(eval override _$x_shared_name := $(_$(ENV)_libdir)$(_$x_shared_lib)$(if $($x.VERSION),.$($x.VERSION)))\
+    $(eval override _$x_soname := $(if $($x.VERSION),$(notdir $($x)).so.$(word 1,$(subst ., ,$($x.VERSION)))))\
     $(eval override _$x_shared_aliases := $x$(SFX) $($x)$(SFX) $(if $(or $(_$(ENV)_libdir),$($x.VERSION)),$($x)$(SFX).so) $(if $(SFX),$x $($x) $($x).so)))
   $(foreach x,$(_test_labels),\
     $(eval override _$x_aliases := $x$(SFX) $($x)$(SFX))\
@@ -806,7 +810,7 @@ endef
 # shared library build
 override define make_shared_lib  # <1:label>
 override _$1_shared_objs := $$(addprefix $$(BUILD_DIR)/$$(_$1_build)-pic/,$$(_$1_src_objs))
-override _$1_shared_link_cmd := $$(strip $$(if $$(filter cxx,$$(_$1_lang)),$$(CXX) $$(_cxxflags_$$(_$1_build)),$$(CC) $$(_cflags_$$(_$1_build))) $$(LDFLAGS) -fPIC -shared $$(_$1_shared_objs) $$($1.OBJS) $$(_$1_libs)) -o '$$(_$1_shared_name)'
+override _$1_shared_link_cmd := $$(strip $$(if $$(filter cxx,$$(_$1_lang)),$$(CXX) $$(_cxxflags_$$(_$1_build)),$$(CC) $$(_cflags_$$(_$1_build))) $$(LDFLAGS) -fPIC -shared $$(if $$(_$1_soname),-Wl$$(_comma)-h$$(_comma)'$$(_$1_soname)') $$(_$1_shared_objs) $$($1.OBJS) $$(_$1_libs)) -o '$$(_$1_shared_name)'
 override _$1_shared_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1-shared
 $$(eval $$(call rebuild_check,$$$$(_$1_shared_trigger),$$$$(_$1_shared_link_cmd)))
 
@@ -821,9 +825,9 @@ ifneq ($$(_$1_mkdir),)
 endif
 	$$(_$1_shared_link_cmd)
 ifneq ($$($1.VERSION),)
-	ln -sf "$$(_$1_shared_lib_ver)" "$$(_$$(ENV)_libdir)$$(_$1_shared_lib)"
+	ln -sf "$$(notdir $$(_$1_shared_name))" "$$(_$$(ENV)_libdir)$$(_$1_shared_lib)"
 ifneq ($$(word 2,$$(subst ., ,$$($1.VERSION))),)
-	ln -sf "$$(_$1_shared_lib_ver)" "$$(_$$(ENV)_libdir)$$(_$1_shared_lib).$$(word 1,$$(subst ., ,$$($1.VERSION)))"
+	ln -sf "$$(notdir $$(_$1_shared_name))" "$$(_$$(ENV)_libdir)$$(_$1_shared_lib).$$(word 1,$$(subst ., ,$$($1.VERSION)))"
 endif
 endif
 	@echo "$$(_info)Shared library '$$@' built$$(_end)"

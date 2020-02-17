@@ -1,5 +1,15 @@
 # Version release history
 
+## 1.9 - general release
+NEW FEATURES:
+* Added 'OPT_LEVEL' setting to control value passed to '-O' for release/profile builds (defaults to '3').  Works as both a global & target specific setting.
+
+CHANGES:
+* When VERSION is set for a shared library, the internal name of the library (DF_SONAME) is set to libname.so.<MAJOR VERSION>
+
+FIXES:
+* fixed creation of shared library links if a path is part of the library name (ex. LIB1 = lib/libname)
+
 ## 1.8 - general release
 NEW FEATURES:
 * 'OPTIONS' config added manage common compiler options/features with simplified controls instead of specific compiler flags.  Target specific OPTIONS config also available (ex.: BIN1.OPTIONS).  Values currently supported:
