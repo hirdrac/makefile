@@ -72,6 +72,7 @@
 #                  use of other vars (TMP,DEP1,OUT,etc.) should be escaped
 #
 #  COMPILER        compiler to use (gcc,clang)
+#  CROSS_COMIPLE   binutils and gcc toolchain prefix (i.e arm-linux-gnueabi-)
 #  STANDARD        language standard(s) of source code
 #  OPT_LEVEL       optimization level for release & profile builds
 #  OPTIMIZE        compiler flags for release & profile builds
@@ -140,6 +141,7 @@ RM ?= rm -f --
 
 #### Basic Settings ####
 COMPILER ?= $(firstword $(compiler_names))
+CROSS_COMPILE ?=
 STANDARD ?=
 OPT_LEVEL ?= 3
 
@@ -245,11 +247,11 @@ ifeq ($(filter $(COMPILER),$(compiler_names)),)
   $(error $(_err)COMPILER: unknown compiler$(_end))
 endif
 
-CXX = $(or $($(COMPILER)_cxx),c++)
-CC = $(or $($(COMPILER)_cc),cc)
-AS = $(or $($(COMPILER)_as),as)
-AR = $(or $($(COMPILER)_ar),ar)
-RANLIB = $(or $($(COMPILER)_ranlib),ranlib)
+CXX = $(CROSS_COMPILE)$(or $($(COMPILER)_cxx),c++)
+CC = $(CROSS_COMPILE)$(or $($(COMPILER)_cc),cc)
+AS = $(CROSS_COMPILE)$(or $($(COMPILER)_as),as)
+AR = $(CROSS_COMPILE)$(or $($(COMPILER)_ar),ar)
+RANLIB = $(CROSS_COMPILE)$(or $($(COMPILER)_ranlib),ranlib)
 
 c_ptrn ?= %.c
 asm_ptrn ?= %.s %.S %.sx
