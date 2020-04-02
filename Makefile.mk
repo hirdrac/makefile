@@ -1,6 +1,9 @@
 #
-# Makefile.mk - version 1.10 (2020/3/26)
+# Makefile.mk - version 1.10 (2020/4/2)
 # Copyright (C) 2020 Richard Bradley
+#
+# Additional contributions from:
+#   Stafford Horne (github:stffrdhrn)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -222,7 +225,7 @@ clang_modern ?= -Winconsistent-missing-override -Wzero-as-null-pointer-constant
 # _fg1 - binary/library built
 # _fg2 - warning or removal notice
 # _fg3 - test passed
-# _fg4 - test failed, fatal error
+# _fg4 - test failed or fatal error
 ifneq ($(shell which setterm 2>/dev/null),)
   override _bold := $(shell setterm --bold on)
   override _fg0 := $(shell setterm --foreground default)

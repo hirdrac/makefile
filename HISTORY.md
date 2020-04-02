@@ -1,29 +1,31 @@
 # Version release history
 
-## 1.10 - general release
+## 1.10 - general release (2020/4/2)
 NEW FEATURES:
 * Added support for '*' wildcards in file specification settings (.SRC, .DEPS, .OBJS)
-* Added a new config style for BIN/LIB entries:
-   * BIN_<target>.<setting> = ...<br>
-  where 'target' is the binary name you want to output. This allows setting build targets with a single line.  For example:
-   * BIN_prog.SRC = *.cc<br>
-  which makes a binary named 'prog' built with all the .cc source in the base directory.  By default, the output name is the target value in the label, but that can be overridden by setting the name label value directly:
-   * BIN_prog = program
-   * BIN_prog.SRC = *.cc<br>
-  The new config style otherwise works just like numbered BIN/LIB labels.
-* Increased max number of FILE & TEST entries to 999 each
-* Improved duplicate name/source error messages by showing duplicate values
-* Added 'TEMPLATE<1-99>.ALL_FILES' output variable - variable contains all files build by the specified template and can be used for dependency rules on a target binary/library (<X>.DEPS setting)
+* Added an additional configuration style for BIN/LIB entries.
+   * Example:
+      * BIN_&lt;target&gt;.&lt;setting&gt; = ...
+   * where 'target' is the binary name you want to output. This allows setting build targets with a single line.  For example:
+      * BIN_prog.SRC = *.cc
+   * which makes a binary named 'prog' built with all the .cc source in the base directory.  By default, the output name is the target value in the label, but that can be overridden by setting the name label value directly:
+      * BIN_prog = program
+      * BIN_prog.SRC = *.cc
+   * The new configuration style otherwise works just like numbered BIN/LIB labels.
+* Increased max number of FILE & TEST entries to 999 each.
+* Improved duplicate name/source error messages by showing duplicate values.
+* Added 'TEMPLATE&lt;1-99&gt;.ALL_FILES' output variable - variable contains all files build by the specified template and can be used for dependency rules on a target binary/library (&lt;X&gt;.DEPS setting)
+* CROSS_COMPILE setting contribution from Stafford Horne (github:stffrdhrn) - adds a prefix to all compiler commands executed.
 
 CHANGES:
-* Disabled <X>.SRC/STANDARD/OPTIONS value checks for non-build targets
+* Disabled &lt;X&gt;.SRC/STANDARD/OPTIONS value checks for non-build targets
 * BIN_OUTPUT_DIR/LIB_OUTPUT_DIR settings renamed to OUTPUT_BIN_DIR/OUTPUT_LIB_DIR to avoid conflicts with new BIN/LIB entry style.  For now, a warning will be displayed and the new settings will be set automatically if the old config variables are used but eventually this will be removed.
-* Changed the TEST<x> name setting from being a make target to an optional description for the test being run.  Specific tests can still be forced to execute by using the label as a make target (.i.e: make TEST1)
+* Changed the TEST&lt;x&gt; name setting from being a make target to an optional description for the test being run.  Specific tests can still be forced to execute by using the label as a make target (.i.e: make TEST1)
 
 FIXES:
-* Fixed package version dependency checking for isolated builds that default to global package settings
+* Fixed package version dependency checking (recompile trigger for when package versions have changed on the system) for isolated builds that default to global package settings
 
-## 1.9 - general release
+## 1.9 - general release (2020/2/8)
 NEW FEATURES:
 * Added 'OPT_LEVEL' setting to control value passed to '-O' for release/profile builds (defaults to '3').  Works as both a global & target specific setting.
 
@@ -33,7 +35,7 @@ CHANGES:
 FIXES:
 * fixed creation of shared library links if a path is part of the library name (ex. LIB1 = lib/libname)
 
-## 1.8 - general release
+## 1.8 - general release (2020/1/11)
 NEW FEATURES:
 * 'OPTIONS' config added manage common compiler options/features with simplified controls instead of specific compiler flags.  Target specific OPTIONS config also available (ex.: BIN1.OPTIONS).  Values currently supported:
    * warn_error - make all compiler warnings into errors
@@ -56,7 +58,7 @@ FIXES:
 * TEST_FLAGS/TEST_PACKAGES were being ignored for test targets with configs that caused an isolated build.  Fixed behavior has test target specific PACKAGES config overrides global PACKAGES/TEST_PACKAGES and test target specific FLAGS config overrides global FLAGS/TEST_FLAGS.
 * Fixed TEST_LIBS/TEST_PACKAGE configured libraries always being used for test targets even when target specific LIBS setting was set.
 
-## 1.7 - general release
+## 1.7 - general release (2019/12/14)
 NEW FEATURES:
 * Added target specific STANDARD config (i.e. BIN1.STANDARD = c++17)
 * Source files with .S/.sx extension recognized as assembly source.
@@ -67,7 +69,7 @@ CHANGES:
 * Targets with only C or ASM source will now link with the C compiler instead of always using the C++ compiler.
 * For color output, ANSI color codes are used directly if 'setterm' isn't available
 
-## 1.6 - general release
+## 1.6 - general release (2019/12/1)
 NEW FEATURES:
 * &lt;X&gt;.DEPS (target specific file dependencies) setting added for BIN/LIB/TEST targets - previously only available for FILE/TEMPLATE.  This setting is useful for handling code generated headers where make can't resolve the exact path before compiling.
 * Added 'ALL_FILES' output variable (equivalent to '$(FILE1) $(FILE2) ...' for all files defined).  Useful for new &lt;X&gt;.DEPS setting.
@@ -87,7 +89,7 @@ BUG FIXES:
 * When linking binaries/shared libraries/tests, 'LIBS' libraries are linked before 'PACKAGES' libraries.  This resolves a linking error when linking with static libraries (via the 'LIBS' setting) that require specific packages in the final binary target.
 * Spelling fixes to various error messages.
 
-## 1.5 - feature release
+## 1.5 - feature release (2019/11/18)
 NEW FEATURES:
 * FILEx target added for creating targets from executing a command settings FILEx.CMD,FILEx.DEPS for file target creation command & dependencies.  Helper variables are set to simplify rule creation:<br>OUT  - same as 'FILEx' value<br>DEPS - same as 'FILEx.DEPS' value<br>DEPn - same as n-th value in 'FILEx.DEPS'
    * Config example:<br>FILE1 = parser.c<br>FILE1.DEPS = parser.y<br>FILE1.CMD = yacc $(DEPS) -o $(OUT)
@@ -101,12 +103,12 @@ NEW FEATURES:
    * Template settings (TEMPLATEx,TEMPLATEx.DEPS,TEMPLATEx.CMD) should use $(VARS)/$(VAR1)/$(VAR2)/etc. for their definition to create the final FILEx entries.  Note if output variables ENV/SFX/TMP are used (or FILE entry specific variables like OUT/DEPS/etc.), they should be escaped to show up correctly in generated FILEx entries (i.e. $$(TMP))
    * Config example:<br>TEMPLATE1.FILE1 = aa_parser cfg1/aa.y<br>TEMPLATE1.FILE2 = bb_parser cfg2/bb.y<br>TEMPLATE1 = $$(TMP)/$(VAR1).c<br>TEMPLATE1.DEPS = $(VAR2)<br>TEMPLATE1.CMD = yacc -o $$(OUT) $$(DEP1)
    * This will create file targets equivalent to:<br>FILE1 = $(TMP)/aa_parser.c<br>FILE1.DEPS = cfg/aa.y<br>FILE1.CMD = yacc -o $(OUT) $(DEP1)<br>FILE2 = $(TMP)/bb_parser.c<br>FILE2.DEPS = cfg/aa.y<br>FILE2.CMD = yacc -o $(OUT) $(DEP1)
-* Added assembly compile support (.s source files).  ASFLAGS, <target>.ASFLAGS settings added to override compile flags.
+* Added assembly compile support (.s source files).  ASFLAGS, &lt;target&gt;.ASFLAGS settings added to override compile flags.
 * Added 'SOURCE_DIR' config to specifically the base directory of all source files.
 * Binary/library targets with a directory as part of their name (i.e. BIN1 = bin/prog) will automatically create the directory as needed and will remove the directory with 'clobber'
 * Added minimum version check for make (required version is 4.2 or higher)
 
-## 1.4 - general release
+## 1.4 - general release (2019/11/11)
 NEW FEATURES:
 * 'ENV' is set with the current build environment, 'SFX' with the binary suffix.  Both variables can be used with OUTPUT_DIR/LIB_OUTPUT_DIR/BIN_OUTPUT_DIR settings to allow for different directories based on build environment.
 * If debug/gprof environment lib/bin output directories are unique (not shared with any other environments) then the binary suffix will be omitted.
@@ -121,7 +123,7 @@ BUG FIXES:
 * Fixed incorrect object file name in dependency file (dependency checks for header changes weren't working because of this).
 * Fixed case where .c files were being compiled as c++ files if the source file was in a sub directory.
 
-## 1.3 - feature release
+## 1.3 - feature release (2019/10/4)
 * binary/library/test specific compile configs possible:
    * BIN1.DEFINE - overrides DEFINE for BIN1 only
    * BIN1.INCLUDE
@@ -135,7 +137,7 @@ BUG FIXES:
 * TEST_PACKAGES can now set test only compile flags and not just libraries
 * Target specific LIBS config (i.e. BIN1.LIBS) now overrides default 'LIBS' config instead of just adding additional libraries to link with (this behavior matches other target specific configs added in this release)
 
-## 1.2 - feature release
+## 1.2 - feature release (2019/8/15)
 * added LIBx.VERSION setting for adding major/minor/patch version to shared libraries built.  If version is specified, symlinks are created for .so & .so.MAJOR_VERSION version(s) of the shared library
 * added additional target aliases for binaries/libraries when building with OUTPUT_DIR/LIB_OUTPUT_DIR/BIN_OUTPUT_DIR set
 * added test failure output message
@@ -146,15 +148,15 @@ BUG FIXES:
    * red - test failed
 * unit tests are forced to build/execute after binary builds<br>(previously they were only forced to run after library builds like binaries)
 
-## 1.1.1 - minor bug fix release
+## 1.1.1 - minor bug fix release (2019/8/1)
 * fixed issues with building both shared & static version of a library
 
-## 1.1 - feature release
+## 1.1 - feature release (2019/7/7)
 * added warnings for unknown binary/library/test parameter variables<br>(for example, setting 'BIN1.OBJ' will trigger a warning since the correct variable is 'BIN1.OBJS')
 * PACKAGES changes or package version changes trigger a full rebuild
 * TEST_PACKAGES changes or test package version changes trigger a relink/run of all tests
 * fixes to allow file/directory names starting with '-'
 * added SYMLINKS setting for creating symlinks to the makefile directory to help building source that expects to include headers from different paths
 
-## 1.0
+## 1.0 (2019/4/10)
 * first public release
