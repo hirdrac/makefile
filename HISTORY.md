@@ -5,7 +5,7 @@ NEW FEATURES:
 * Added 'OPT_LEVEL' setting to control value passed to '-O' for release/profile builds (defaults to '3').  Works as both a global & target specific setting.
 
 CHANGES:
-* When VERSION is set for a shared library, the internal name of the library (DF_SONAME) is set to libname.so.<MAJOR VERSION>
+* When VERSION is set for a shared library, the internal name of the library (DF_SONAME) is set to libname.so.&lt;MAJOR VERSION&gt;
 
 FIXES:
 * fixed creation of shared library links if a path is part of the library name (ex. LIB1 = lib/libname)
@@ -46,8 +46,8 @@ CHANGES:
 
 ## 1.6 - general release
 NEW FEATURES:
-* <X>.DEPS (target specific file dependencies) setting added for BIN/LIB/TEST targets - previously only available for FILE/TEMPLATE.  This setting is useful for handling code generated headers where make can't resolve the exact path before compiling.
-* Added 'ALL_FILES' output variable (equivalent to '$(FILE1) $(FILE2) ...' for all files defined).  Useful for new <X>.DEPS setting.
+* &lt;X&gt;.DEPS (target specific file dependencies) setting added for BIN/LIB/TEST targets - previously only available for FILE/TEMPLATE.  This setting is useful for handling code generated headers where make can't resolve the exact path before compiling.
+* Added 'ALL_FILES' output variable (equivalent to '$(FILE1) $(FILE2) ...' for all files defined).  Useful for new &lt;X&gt;.DEPS setting.
 * WARN/WARN_C/INCLUDE/LIBS/DEFINE global & target specific settings no longer require compiler specific flags - if not specified, the compiler flag will automatically be added.  For example:
    * DEFINE = NDEBUG  (equivalent to: DEFINE = -D'NDEBUG')
    * INCLUDE = . include  (equivalent to: INCLUDE = -I. -Iinclude)
