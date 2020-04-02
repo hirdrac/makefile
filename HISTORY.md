@@ -1,5 +1,28 @@
 # Version release history
 
+## 1.10 - general release
+NEW FEATURES:
+* Added support for '*' wildcards in file specification settings (.SRC, .DEPS, .OBJS)
+* Added a new config style for BIN/LIB entries:
+   * BIN_<target>.<setting> = ...<br>
+  where 'target' is the binary name you want to output. This allows setting build targets with a single line.  For example:
+   * BIN_prog.SRC = *.cc<br>
+  which makes a binary named 'prog' built with all the .cc source in the base directory.  By default, the output name is the target value in the label, but that can be overridden by setting the name label value directly:
+   * BIN_prog = program
+   * BIN_prog.SRC = *.cc<br>
+  The new config style otherwise works just like numbered BIN/LIB labels.
+* Increased max number of FILE & TEST entries to 999 each
+* Improved duplicate name/source error messages by showing duplicate values
+* Added 'TEMPLATE<1-99>.ALL_FILES' output variable - variable contains all files build by the specified template and can be used for dependency rules on a target binary/library (<X>.DEPS setting)
+
+CHANGES:
+* Disabled <X>.SRC/STANDARD/OPTIONS value checks for non-build targets
+* BIN_OUTPUT_DIR/LIB_OUTPUT_DIR settings renamed to OUTPUT_BIN_DIR/OUTPUT_LIB_DIR to avoid conflicts with new BIN/LIB entry style.  For now, a warning will be displayed and the new settings will be set automatically if the old config variables are used but eventually this will be removed.
+* Changed the TEST<x> name setting from being a make target to an optional description for the test being run.  Specific tests can still be forced to execute by using the label as a make target (.i.e: make TEST1)
+
+FIXES:
+* Fixed package version dependency checking for isolated builds that default to global package settings
+
 ## 1.9 - general release
 NEW FEATURES:
 * Added 'OPT_LEVEL' setting to control value passed to '-O' for release/profile builds (defaults to '3').  Works as both a global & target specific setting.
