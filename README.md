@@ -5,14 +5,14 @@ See Makefile.mk comments for variable parameters and standard targets.
 
 
 ## Feature summary
-* Can define up to 99 binaries, 99 libraries, and 99 unit tests in the same makefile
+* Can define up to 99 binaries, 99 libraries, and 999 unit tests in the same makefile
 * Built object files are placed together in a build directory
 * Dependency files are automatically generated to insure re-compilation for source changes is handled correctly
 * Makefile value changes are automatically detected and will always insure everything is compiled correctly without requiring a 'make clean' to remove old object files
 * Multiple build environments are supported:
    * 'release' - default, build with full optimizations
    * 'debug' - build with minimal optimizations and enable debug flags (output binaries will have '-g' suffix)
-   * 'gprof' - optimized build with added profiling options enabled ('-pg' suffix added to output binaries)
+   * 'profile' - optimized build with added profiling options enabled ('-pg' suffix added to output binaries)
 * Single configure option to switch compilers (gcc & clang are both currently supported)
 * Binary/library output defaults to makefile directory but an optional output directory can be configured
 * Simple configure option to allow building with various 3rd party libraries (run 'pkg-config --list-all' to see what packages your system supports)
@@ -40,7 +40,7 @@ PACKAGES = freetype2
 # extra warning flags (in addition to default flags)
 WARN_EXTRA = -Werror
 # use specific C++ standard instead of compiler default
-STANDARD = c++14
+STANDARD = c++17
 
 # include must be at end
 include Makefile.mk
