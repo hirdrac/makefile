@@ -75,7 +75,7 @@
 #  TEST1.DEPS      additional dependencies for building all test 1 objects
 #
 #  COMPILER        compiler to use (gcc,clang)
-#  CROSS_COMIPLE   binutils and gcc toolchain prefix (i.e arm-linux-gnueabi-)
+#  CROSS_COMPILE   binutils and gcc toolchain prefix (i.e arm-linux-gnueabi-)
 #  STANDARD        language standard(s) of source code
 #  OPT_LEVEL       optimization level for release & profile builds
 #  OPTIMIZE        compiler flags for release & profile builds
