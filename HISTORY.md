@@ -1,5 +1,26 @@
 # Version release history
 
+## 1.11 - general release (2020/4/15)
+NEW FEATURES:
+* Added Cygwin/MinGW/MSYS shared library building support
+   * Shared library source compiled without -fPIC (not used for Windows) so object files can be shared with binary/static library builds.
+   * Shared libraries are named with .dll extension, destination same as binaries.
+   * Implementation library (<lib name>.dll.a) built with each shared library (necessary for linking in Windows).
+   * Added 'SUBSYSTEM' global/target config to set subsystem value for linking (see 'man ld' for --subsystem config details).  Setting ignored on non-Windows platforms.
+   * Added 'LIB_PREFIX' output variable for library naming (i.e. LIB1 = $(LIB_PREFIX)test).  This is necessary for libraries to follow OS conventions for naming .dll files (Cygwin uses prefix 'cyg' for shared libraries, MSYS uses 'msys-', for impl/static/other OS libraries 'lib' is used)
+* Added support for specifying a full library filename for 'LIBS' global/target setting,  (i.e. LIBS = libtest.so)
+* FILE targets with a path in their name will automatically create the path directory like BIN/LIB targets currently do (unlike BIN/LIB targets, however, OUTPUT_DIR is ignored).
+
+CHANGES:
+* '.dll' is recognized as a file name extension for various filename checks.
+* Output variable 'TMP' changed to 'BUILD_TMP' to avoid issues on Windows platforms.
+* Environment specific temp directories (i.e. build/release_tmp) are no longer created by default, but will still be created if referenced to in a target's name (i.e.  FILE1 = $(BUILD_TMP)/output.h)
+* Removed checks for old output dir config options BIN_OUTPUT_DIR/LIB_OUTPUT_DIR - new config variables need to be used instead.
+
+FIXES:
+* Fixed target variable logic to not treat all variables that start with BIN_ or LIB_ as target labels and trigger false errors.
+* Fixed setting 'LDFLAGS' directly not overriding all generated linker flags.
+
 ## 1.10 - general release (2020/4/2)
 NEW FEATURES:
 * Added support for '*' wildcards in file specification settings (.SRC, .DEPS, .OBJS)
