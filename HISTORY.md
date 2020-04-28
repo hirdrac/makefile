@@ -1,5 +1,22 @@
 # Version release history
 
+## 1.12 - general release (2020/4/27)
+NEW FEATURES:
+* LDFLAGS can be set for specific targets (similar to CFLAGS/CXXFLAGS/ASFLAGS).
+* Added RELEASE_FLAGS/DEBUG_FLAGS/PROFILE_FLAGS to add additional compiler flags based on build environment (replacing OPTIMIZE/DEBUG/PROFILE settings).
+* Added DEBUG_OPT_LEVEL to control optimization setting value used for debug builds (can be a global or target specific config).
+* Added c2x/gnu2x C standard support.
+
+CHANGES:
+* TEST_PACKAGES/TEST_LIBS/TEST_FLAGS now always add libraries/flags to test targets and are not overridden by target settings except for CFLAGS/CXXFLAGS/ASFLAGS/LDFLAGS.
+* Build environment/compiler config can no longer be overridden (custom Makefile.mk version is probably a better way to handle this).
+* Default optimization for debug builds changed to 'g' (-Og).
+* Default defines for debug builds (-DDEFINE -D_FORTIFY_SOURCE=1) removed.
+
+FIXES:
+* Target SUBSYSTEM config didn't support '-' to clear the value.
+* debug/profile test label targets (i.e.: TEST1-g) could execute tests twice.
+
 ## 1.11 - general release (2020/4/15)
 NEW FEATURES:
 * Added Cygwin/MinGW/MSYS shared library building support
