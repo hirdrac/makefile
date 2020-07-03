@@ -1,5 +1,27 @@
 # Version release history
 
+## 1.13 - general release (2020/6/29)
+NEW FEATURES:
+* FILE_<id>, TEST_<id> now available as file/test labels.
+* Added new options:
+   * static_rtlib: staticly link with libgcc
+   * static_stdlib: staticly link with libstdc++
+* Added new global/target config option 'LINK_FLAGS' - allows additional flags for link command.
+* Added 'c++20','gnu++20' to supported STANDARD values.
+
+CHANGES:
+* Added additional GCC warning flags for 'modern_c++' option (-Wsuggest-final-methods, -Wsuggest-final-types).
+* Various settings renamed to avoid conflicts with target labels or for consistency (no functional differences):
+   * TEST_PACKAGES -> PACKAGES_TEST
+   * TEST_LIBS     -> LIBS_TEST
+   * TEST_FLAGS    -> FLAGS_TEST
+   * DEBUG_OPT_LEVEL -> OPT_LEVEL_DEBUG
+   * DEBUG_FLAGS     -> FLAGS_DEBUG
+   * RELEASE_FLAGS   -> FLAGS_RELEASE
+   * PROFILE_FLAGS   -> FLAGS_PROFILE
+   * LIB_PREFIX -> LIBPREFIX
+* All internal variables changed to start with '_' to avoid any possible conflicts with variables used in the Makefile.  (Variables starting with lower-case letters will never conflict with Makefile.mk internal variables or input/output settings.)
+
 ## 1.12 - general release (2020/4/27)
 NEW FEATURES:
 * LDFLAGS can be set for specific targets (similar to CFLAGS/CXXFLAGS/ASFLAGS).
