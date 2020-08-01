@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.13 (2020/6/29)
+# Makefile.mk - version 1.14 (2020/7/26)
 # Copyright (C) 2020 Richard Bradley
 #
 # Additional contributions from:
@@ -127,6 +127,12 @@
 #
 #  Filename wildcard '*' supported for .SRC,.DEPS,.OBJS settings
 #
+#  <X>.LIBS/<X>.OBJS can accept LIB labels of library targets. Library
+#    LIBS/PACKAGES/binary will automatically be used in target building.
+#    LIBS will perfer shared library for linking if available, OBJS will only
+#    allow linking with static libraries.
+#    (ex.: BIN1.LIBS = LIB1)
+#
 # Output Variables:
 #  ENV             current build environment
 #  SFX             current build environment binary suffix
@@ -179,6 +185,7 @@ FLAGS_TEST ?=
 FLAGS_RELEASE ?=
 FLAGS_DEBUG ?=
 FLAGS_PROFILE ?=
+LINK_FLAGS ?=
 
 BUILD_DIR ?= build
 DEFAULT_ENV ?= $(firstword $(_env_names))
@@ -310,14 +317,14 @@ endef
 override _pkg_n = $(word 1,$(subst :, ,$1))
 override _pkg_v = $(word 2,$(subst :, ,$1))
 override _check_pkgs =\
-$(strip $(foreach x,$($1),\
+$(sort $(foreach x,$($1),\
   $(if $(shell $(PKGCONF) $(call _pkg_n,$x) $(if $(call _pkg_v,$x),--atleast-version=$(call _pkg_v,$x),--exists) && echo '1'),\
     $(call _pkg_n,$x),\
     $(warning $(_msgWarn)$1: package '$(call _pkg_n,$x)'$(if $(call _pkg_v,$x), [version >= $(call _pkg_v,$x)]) not found$(_end)))))
 
 override _get_pkg_flags = $(if $1,$(strip $(shell $(PKGCONF) $1 --cflags)))
 override _get_pkg_libs = $(if $1,$(strip $(shell $(PKGCONF) $1 --libs)))
-override _get_pkg_ver = $(strip $(shell $(PKGCONF) $1 --modversion))
+override _gen_pkg_ver_list = $(foreach p,$(sort $1),$p:$(strip $(shell $(PKGCONF) $p --modversion)))
 
 override define _verify_pkgs  # <1:config pkgs var> <2:valid pkgs>
 ifeq ($$($1),)
@@ -387,9 +394,9 @@ override _$1_labels := $$(subst $1.,,$$(filter $1.FILE%,$$(.VARIABLES)))
 ifeq ($$(_$1_labels),)
   $$(error $$(_msgErr)$1: no FILE entries$$(_end))
 else ifeq ($$(strip $$($1)),)
-  $$(error $$(_msgErr)$1: value required)
+  $$(error $$(_msgErr)$1 required)
 else ifeq ($$(strip $$($1.CMD)),)
-  $$(error $$(_msgErr)$1.CMD: command required$$(_end))
+  $$(error $$(_msgErr)$1.CMD required$$(_end))
 endif
 endef
 $(foreach x,$(_template_labels),$(eval $(call _check_template_entry,$x)))
@@ -441,9 +448,11 @@ $(foreach x,$(_all_labels),$(if $($x),$(eval override $x = $(strip $(value $x)))
 # output name check
 override define _check_name  # <1:label>
 ifeq ($$(strip $$($1)),)
-  $$(error $$(_msgErr)$1: value required$$(_end))
+  $$(error $$(_msgErr)$1 required$$(_end))
 else ifneq ($$(words $$($1)),1)
-  $$(error $$(_msgErr)$1: spaces not allowed in name$$(_end))
+  $$(error $$(_msgErr)$1: spaces not allowed$$(_end))
+else ifneq ($$(findstring *,$$($1)),)
+  $$(error $$(_msgErr)$1: wildcard '*' not allowed$$(_end))
 else ifneq ($$(filter $$($1),$$(_base_targets) $$(foreach e,$$(_env_names),$1$$(_$$e_sfx))),)
   $$(error $$(_msgErr)$1: name conflicts with existing target$$(_end))
 endif
@@ -451,7 +460,7 @@ endef
 $(foreach x,$(_lib_labels) $(_bin_labels),$(eval $(call _check_name,$x)))
 
 # target setting patterns
-override _bin_ptrn := %.SRC %.OBJS %.LIBS %.STANDARD %.OPT_LEVEL %.OPT_LEVEL_DEBUG %.DEFINE %.INCLUDE %.FLAGS %.PACKAGES %.OPTIONS %.DEPS %.SUBSYSTEM %.CXXFLAGS %.CFLAGS %.ASFLAGS %.LDFLAGS
+override _bin_ptrn := %.SRC %.OBJS %.LIBS %.STANDARD %.OPT_LEVEL %.OPT_LEVEL_DEBUG %.DEFINE %.INCLUDE %.FLAGS %.LINK_FLAGS %.PACKAGES %.OPTIONS %.DEPS %.SUBSYSTEM %.CXXFLAGS %.CFLAGS %.ASFLAGS %.LDFLAGS
 override _lib_ptrn := %.TYPE %.VERSION $(_bin_ptrn)
 override _test_ptrn := %.ARGS $(_bin_ptrn)
 
@@ -488,7 +497,7 @@ override define _check_file_entry  # <1:file label>
 $$(foreach x,$$(filter-out %.DEPS %.CMD,$$(filter $1.%,$$(.VARIABLES))),\
   $$(warning $$(_msgWarn)Unknown file parameter '$$x'$$(_end)))
 ifeq ($$(strip $$($1.CMD)),)
-  $$(error $$(_msgErr)$1.CMD: command required$$(_end))
+  $$(error $$(_msgErr)$1.CMD required$$(_end))
 endif
 endef
 $(foreach x,$(_file_labels),$(eval $(call _check_file_entry,$x)))
@@ -510,19 +519,28 @@ ifeq ($(filter $(DEFAULT_ENV),$(_env_names)),)
 endif
 MAKECMDGOALS ?= $(DEFAULT_ENV)
 
-ifneq ($(words $(BUILD_DIR)),1)
-  $(error $(_msgErr)BUILD_DIR: spaces not allowed$(_end))
-else ifeq ($(filter 0 1,$(words $(OUTPUT_DIR))),)
-  $(error $(_msgErr)OUTPUT_DIR: spaces not allowed$(_end))
-else ifeq ($(filter 0 1,$(words $(OUTPUT_BIN_DIR))),)
-  $(error $(_msgErr)OUTPUT_BIN_DIR: spaces not allowed$(_end))
-else ifeq ($(filter 0 1,$(words $(OUTPUT_LIB_DIR))),)
-  $(error $(_msgErr)OUTPUT_LIB_DIR: spaces not allowed$(_end))
+override define _check_dir # <1:dir var>
+ifeq ($$(filter 0 1,$$(words $$($1))),)
+  $$(error $$(_msgErr)$1: spaces not allowed$$(_end))
+else ifneq ($$(findstring *,$$($1)),)
+  $$(error $$(_msgErr)$1: wildcard '*' not allowed$$(_end))
 endif
+endef
+
+ifeq ($(strip $(BUILD_DIR)),)
+  $(error $(_msgErr)BUILD_DIR required$(_end))
+endif
+$(eval $(call _check_dir,BUILD_DIR))
+$(eval $(call _check_dir,OUTPUT_DIR))
+$(eval $(call _check_dir,OUTPUT_BIN_DIR))
+$(eval $(call _check_dir,OUTPUT_LIB_DIR))
 
 override _static_lib_labels := $(strip $(foreach x,$(_lib_labels),$(if $($x.TYPE),$(if $(filter static,$($x.TYPE)),$x),$x)))
 override _shared_lib_labels := $(strip $(foreach x,$(_lib_labels),$(if $(filter shared,$($x.TYPE)),$x)))
+
+$(eval $(call _check_dir,SOURCE_DIR))
 override _src_path := $(if $(SOURCE_DIR),$(SOURCE_DIR:%/=%)/)
+override _symlinks := $(addprefix $(_src_path),$(SYMLINKS))
 
 # output target name generation macros - <1:build env> <2:label>
 override _gen_bin_name = $(_$1_bdir)$($2)$(_$1_bsfx)
@@ -588,7 +606,21 @@ $(foreach e,$(_env_names),$(eval $(call _setup_env1,$e)))
 override _format_warn = $(foreach x,$1,$(if $(filter -%,$x),$x,-W$x))
 override _format_include = $(foreach x,$1,$(if $(filter -%,$x),$x,-I$x))
 override _format_define = $(foreach x,$1,$(if $(filter -%,$x),$x,-D'$x'))
-override _format_libs = $(foreach x,$1,$(if $(filter -%,$x),$x,$(if $(filter ./,$(dir $x)),,-L$(dir $x)) -l$(if $(filter %.a %.so %.dll,$x),:)$(notdir $x)))
+
+override _format_lib_arg =\
+$(if $(filter -%,$1),$1,\
+$(if $(filter ./,$(dir $1)),,-L$(dir $1)) -l$(if $(filter %.a %.so %.dll,$1),:)$(notdir $1))
+
+override _format_lib_name =\
+$(if $1,$(if $(filter ./,$(dir $1)),,-L$(dir $1)) -l:$(notdir $1))
+
+override _format_global_libs = $(foreach x,$1,\
+$(if $(filter $x,$(_lib_labels)),$(error $(_msgErr)LIB label '$x' not allowed in global LIBS setting$(_end)),\
+$(call _format_lib_arg,$x)))
+
+override _format_target_libs = $(foreach x,$1,\
+$(if $(filter $x,$(_lib_labels)),$(or $(call _format_lib_name,$(_$x_shared_name)),$(_$x_name)),\
+$(call _format_lib_arg,$x)))
 
 # build environment detection
 override _build_env := $(strip $(foreach e,$(_env_names),$(if $(_$e_goals),$e)))
@@ -608,155 +640,32 @@ else ifneq ($(_build_env),)
 
   override _pkgs := $(call _check_pkgs,PACKAGES)
   override _pkg_flags := $(call _get_pkg_flags,$(_pkgs))
-  override _pkg_libs := $(call _get_pkg_libs,$(_pkgs))
 
-  override _test_pkgs := $(call _check_pkgs,PACKAGES_TEST)
-  override _test_pkg_flags := $(if $(_test_pkgs),$(call _get_pkg_flags,$(_pkgs) $(_test_pkgs)),$(_pkg_flags))
-  override _test_pkg_libs := $(if $(_test_pkgs),$(call _get_pkg_libs,$(_pkgs) $(_test_pkgs)),$(_pkg_libs))
+  override _pkgs_test := $(call _check_pkgs,PACKAGES_TEST)
+  override _test_pkg_flags := $(if $(_pkgs_test),$(call _get_pkg_flags,$(_pkgs) $(_pkgs_test)),$(_pkg_flags))
 
   override _define := $(call _format_define,$(DEFINE))
   override _include := $(call _format_include,$(INCLUDE))
   override _warn := $(call _format_warn,$(WARN))
   override _warn_c := $(call _format_warn,$(WARN_C))
-  override _flags := $(FLAGS) $(FLAGS_$(_$(ENV)_uc))
 
   # setup compile flags for each build path
-  override _cxxflags_$(ENV) := $(or $(CXXFLAGS),$(_cxx_std) $(_$(ENV)_op) $(_warn) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_pkg_flags) $(_flags))
-  override _cflags_$(ENV) := $(or $(CFLAGS),$(_c_std) $(_$(ENV)_op) $(_warn_c) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_pkg_flags) $(_flags))
-  override _asflags_$(ENV) := $(or $(ASFLAGS),$(_$(ENV)_op) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_pkg_flags) $(_flags))
+  override _xflags :=  $(_pkg_flags) $(FLAGS) $(FLAGS_$(_$(ENV)_uc))
+  override _cxxflags_$(ENV) := $(strip $(or $(CXXFLAGS),$(_cxx_std) $(_$(ENV)_op) $(_warn) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_xflags)))
+  override _cflags_$(ENV) := $(strip $(or $(CFLAGS),$(_c_std) $(_$(ENV)_op) $(_warn_c) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_xflags)))
+  override _asflags_$(ENV) := $(strip $(or $(ASFLAGS),$(_$(ENV)_op) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_xflags)))
 
   ifneq ($(_pkg_flags),$(strip $(_test_pkg_flags) $(FLAGS_TEST)))
-    override _cxxflags_$(ENV)-tests := $(or $(CXXFLAGS),$(_cxx_std) $(_$(ENV)_op) $(_warn) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_test_pkg_flags) $(_flags) $(FLAGS_TEST))
-    override _cflags_$(ENV)-tests := $(or $(CFLAGS),$(_c_std) $(_$(ENV)_op) $(_warn_c) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_test_pkg_flags) $(_flags) $(FLAGS_TEST))
-    override _asflags_$(ENV)-tests := $(or $(ASFLAGS),$(_$(ENV)_op) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_test_pkg_flags) $(_flags) $(FLAGS_TEST))
+    override _test_xflags :=  $(_test_pkg_flags) $(FLAGS) $(FLAGS_$(_$(ENV)_uc)) $(FLAGS_TEST)
+    override _cxxflags_$(ENV)-tests := $(strip $(or $(CXXFLAGS),$(_cxx_std) $(_$(ENV)_op) $(_warn) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_test_xflags)))
+    override _cflags_$(ENV)-tests := $(strip $(or $(CFLAGS),$(_c_std) $(_$(ENV)_op) $(_warn_c) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_test_xflags)))
+    override _asflags_$(ENV)-tests := $(strip $(or $(ASFLAGS),$(_$(ENV)_op) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_test_xflags)))
   endif
 
-  override _libs := $(call _format_libs,$(LIBS))
-  override _libs_test := $(call _format_libs,$(LIBS_TEST))
+  override _libs := $(call _format_global_libs,$(LIBS))
+  override _libs_test := $(call _format_global_libs,$(LIBS_TEST))
 
-  ## pre-build setup per label ##
-  override define _build_entry  # <1:label> <2:test flag>
-  override _$1_src := $$(foreach x,$$($1.SRC),$$(if $$(findstring *,$$x),$$(foreach y,$$(wildcard $$(_src_path)$$x),$$(filter-out ./,$$(dir $$x))$$(notdir $$y)),$$x))
-  ifeq ($$(strip $$($1.SRC)),)
-    $$(error $$(_msgErr)$1.SRC: no source files specified$$(_end))
-  else ifeq ($$(strip $$(_$1_src)),)
-    $$(error $$(_msgErr)$1.SRC: no source files match pattern$$(_end))
-  else ifneq ($$(words $$(_$1_src)),$$(words $$(sort $$(_$1_src))))
-    $$(error $$(_msgErr)$1.SRC: duplicate source files [$$(_msgWarn)$$(call _find_dups,$$(_$1_src))$$(_msgErr)]$$(_end))
-  else ifneq ($$(filter-out $(_cxx_ptrn) $(_c_ptrn) $(_asm_ptrn),$$(_$1_src)),)
-    $$(error $$(_msgErr)$1.SRC: invalid source files [$$(_msgWarn)$$(filter-out $(_cxx_ptrn) $(_c_ptrn) $(_asm_ptrn),$$(_$1_src))$$(_msgErr)]$$(_end))
-  endif
-
-  override _$1_lang := $$(if $$(filter $(_asm_ptrn),$$(_$1_src)),asm) $$(if $$(filter $(_c_ptrn),$$(_$1_src)),c) $$(if $$(filter $(_cxx_ptrn),$$(_$1_src)),cxx)
-  override _$1_src_objs := $$(addsuffix .o,$$(call _src_bname,$$(_$1_src)))
-  override _$1_other_objs := $$(foreach x,$$($1.OBJS),$$(if $$(findstring *,$$x),$$(wildcard $$x),$$x))
-
-  ifneq ($$($1.SUBSYSTEM),-)
-    override _$1_subsystem := $$(if $$(_windows),$$(or $$($1.SUBSYSTEM),$$(SUBSYSTEM)))
-  endif
-
-  ifneq ($$($1.LINK_FLAGS),-)
-    override _$1_link_flags := $$(or $$($1.LINK_FLAGS),$$(LINK_FLAGS))
-  endif
-
-  ifeq ($$($1.STANDARD),)
-    override _$1_cxx_std := $$(_cxx_std)
-    override _$1_c_std := $$(_c_std)
-  else ifneq ($$($1.STANDARD),-)
-    $$(eval $$(call _check_standard,$1.STANDARD,_$1))
-  endif
-
-  ifeq ($$($1.OPTIONS),)
-    override _$1_op_warn := $$(_op_warn)
-    override _$1_op_flags := $$(_op_flags)
-    override _$1_op_link := $$(_op_link)
-    override _$1_op_cxx_warn := $$(_op_cxx_warn)
-    override _$1_op_cxx_flags := $$(_op_cxx_flags)
-    override _$1_op_cxx_link := $$(_op_cxx_link)
-  else ifneq ($$($1.OPTIONS),-)
-    $$(eval $$(call _check_options,$1.OPTIONS,_$1))
-  endif
-
-  ifeq ($$($1.PACKAGES),)
-    override _$1_pkg_libs := $$(if $2,$$(_test_pkg_libs),$$(_pkg_libs))
-    override _$1_pkg_flags := $$(if $2,$$(_test_pkg_flags),$$(_pkg_flags))
-  else
-    ifeq ($$($1.PACKAGES),-)
-      override _$1_pkgs := $$(if $2,$$(_test_pkgs))
-    else
-      override _$1_pkgs := $$(strip $$(call _check_pkgs,$1.PACKAGES) $$(if $2,$$(_test_pkgs)))
-    endif
-    override _$1_pkg_libs := $$(call _get_pkg_libs,$$(_$1_pkgs))
-    override _$1_pkg_flags := $$(call _get_pkg_flags,$$(_$1_pkgs))
-  endif
-  override _$1_pkg_trigger := $$(if $$(_$1_pkgs),.packages_ver-$1,$$(if $$(and $2,$(_test_pkgs)),.packages_ver-tests,$$(if $$(_pkgs),.packages_ver)))
-
-  # NOTE: LIBS before PACKAGES libs in case included static lib requires package
-  ifeq ($$($1.LIBS),-)
-    override _$1_libs := $$(if $2,$$(_libs_test)) $$(_$1_pkg_libs)
-  else
-    override _$1_libs := $$(or $$(call _format_libs,$$($1.LIBS)),$$(_libs)) $$(if $2,$$(_libs_test)) $$(_$1_pkg_libs)
-  endif
-
-  override _$1_build_sfx := $$(if $$(or $$($1.STANDARD),$$($1.OPT_LEVEL),$$($1.DEFINE),$$($1.INCLUDE),$$($1.PACKAGES),$$(filter $$(_op_list2),$$($1.OPTIONS)),$$($1.FLAGS),$$($1.CXXFLAGS),$$($1.CFLAGS),$$($1.ASFLAGS),$$($1.DEPS)),-$1)
-  ifeq ($(_pkg_flags),$(strip $(_test_pkg_flags) $(FLAGS_TEST)))
-    override _$1_build := $$(ENV)$$(_$1_build_sfx)
-  else
-    override _$1_build := $$(ENV)$$(or $$(_$1_build_sfx),$$(if $2,-tests))
-  endif
-
-  ifneq ($$(_$1_build_sfx),)
-    # setup isolated build
-    ifneq ($$($1.DEFINE),-)
-      override _$1_define := $$(or $$(call _format_define,$$($1.DEFINE)),$$(_define))
-    endif
-
-    ifneq ($$($1.INCLUDE),-)
-      override _$1_include := $$(or $$(call _format_include,$$($1.INCLUDE)),$$(_include))
-    endif
-
-    # NOTE: FLAGS after PACKAGES flags so specified flags always override
-    ifeq ($$($1.FLAGS),-)
-      override _$1_flags := $$(_$1_pkg_flags) $$(FLAGS_$$(_$$(ENV)_uc)) $$(if $2,$$(FLAGS_TEST))
-    else
-      override _$1_flags := $$(_$1_pkg_flags) $$(or $$($1.FLAGS),$$(FLAGS)) $$(FLAGS_$$(_$$(ENV)_uc)) $$(if $2,$$(FLAGS_TEST))
-    endif
-
-    override _cxxflags_$$(_$1_build) := $$(or $$($1.CXXFLAGS),$$(CXXFLAGS),$$(_$1_cxx_std) $$(call _$$(ENV)_op,$1) $$(_warn) $$(_$1_op_cxx_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_cxx_flags) $$(_$1_flags))
-    override _cflags_$$(_$1_build) := $$(or $$($1.CFLAGS),$$(CFLAGS),$$(_$1_c_std) $$(call _$$(ENV)_op,$1) $$(_warn_c) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_flags))
-    override _asflags_$$(_$1_build) := $$(or $$($1.ASFLAGS),$$(ASFLAGS),$$(call _$$(ENV)_op,$1) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_flags))
-  endif
-  endef
-  $(foreach x,$(_lib_labels) $(_bin_labels),$(eval $(call _build_entry,$x,)))
-  $(foreach x,$(_test_labels),$(eval $(call _build_entry,$x,test)))
-
-  # NOTES:
-  # - _<label>_build_sfx is non-empty if an isolated build is required for target
-  #   (technically not always true but current behavior is to be safe without
-  #   doing the work of checking if compile flags would actually change because
-  #   of the target specific config)
-  # - <label>.DEPS can cause an isolated build even though there are no compile
-  #   flag changes (target 'source.o : | dep' rules would affect other builds
-  #   without isolation)
-  # - .SRC wildcard support doesn't work for wildcards in directory names, only
-  #   file names
-
-  # .DEPS wildcard translation
-  $(foreach y,$(_all_labels),\
-    $(eval override _$y_deps := $$(foreach x,$$($y.DEPS),$$(if $$(findstring *,$$x),$$(wildcard $$x),$$x))))
-
-  # check for source conflicts like src/file.cc & src/file.cpp
-  override _all_source := $(sort $(foreach x,$(_src_labels),$(_$x_src)))
-  override _all_source_base := $(call _src_bname,$(_all_source))
-  ifneq ($(words $(_all_source_base)),$(words $(sort $(_all_source_base))))
-    $(error $(_msgErr)Conflicting source files - each basename must be unique$(_end))
-  endif
-
-  # halt build for package errors on non-test targets
-  $(eval $(call _verify_pkgs,PACKAGES,_pkgs))
-  $(foreach x,$(_bin_labels) $(_lib_labels),$(eval $(call _verify_pkgs,$x.PACKAGES,_$x_pkgs)))
-
-  # specific label target setup
+  ## entry binary name & alias target assignment
   $(foreach x,$(_bin_labels),\
     $(eval override _$x_name := $(call _gen_bin_name,$(ENV),$x))\
     $(eval override _$x_aliases := $x$(SFX) $(call _gen_bin_aliases,$(ENV),$x) $(if $(SFX),$x $($x))))
@@ -781,11 +690,160 @@ else ifneq ($(_build_env),)
   $(if $(_windows),$(foreach x,$(_shared_lib_labels),\
     $(eval override _$x_implib := $(call _gen_implib_name,$(ENV),$x))))
 
+  # .DEPS wildcard translation
+  $(foreach x,$(_all_labels),\
+    $(eval override _$x_deps := $(foreach d,$($x.DEPS),$(if $(findstring *,$d),$(wildcard $d),$d))))
+
+  ## general entry setting parsing (pre)
+  override define _build_entry1  # <1:label>
+  override _$1_src := $$(foreach x,$$($1.SRC),$$(if $$(findstring *,$$x),$$(patsubst $(_src_path)%,%,$$(wildcard $$(_src_path)$$x)),$$x))
+  ifeq ($$(strip $$($1.SRC)),)
+    $$(error $$(_msgErr)$1.SRC: no source files specified$$(_end))
+  else ifeq ($$(strip $$(_$1_src)),)
+    $$(error $$(_msgErr)$1.SRC: no source files match pattern$$(_end))
+  else ifneq ($$(words $$(_$1_src)),$$(words $$(sort $$(_$1_src))))
+    $$(error $$(_msgErr)$1.SRC: duplicate source files [$$(_msgWarn)$$(call _find_dups,$$(_$1_src))$$(_msgErr)]$$(_end))
+  else ifneq ($$(filter-out $(_cxx_ptrn) $(_c_ptrn) $(_asm_ptrn),$$(_$1_src)),)
+    $$(error $$(_msgErr)$1.SRC: invalid source files [$$(_msgWarn)$$(filter-out $(_cxx_ptrn) $(_c_ptrn) $(_asm_ptrn),$$(_$1_src))$$(_msgErr)]$$(_end))
+  endif
+
+  override _$1_lang := $$(if $$(filter $(_asm_ptrn),$$(_$1_src)),asm) $$(if $$(filter $(_c_ptrn),$$(_$1_src)),c) $$(if $$(filter $(_cxx_ptrn),$$(_$1_src)),cxx)
+  override _$1_src_objs := $$(addsuffix .o,$$(call _src_bname,$$(_$1_src)))
+
+  ifneq ($$(strip $$($1.OBJS)),-)
+    override _$1_other_objs := $$(foreach x,$$($1.OBJS),\
+      $$(if $$(findstring *,$$x),$$(wildcard $$x),\
+        $$(if $$(filter $$x,$$(_lib_labels)),$$(or $$(_$$x_name),$$(error $$(_msgErr)$1.OBJS: static type required for library '$$x'$$(_end))),$$x)))
+  endif
+
+  ifneq ($$(strip $$($1.SUBSYSTEM)),-)
+    override _$1_subsystem := $$(if $$(_windows),$$(or $$($1.SUBSYSTEM),$$(SUBSYSTEM)))
+  endif
+
+  ifneq ($$(strip $$($1.LINK_FLAGS)),-)
+    override _$1_link_flags := $$(or $$($1.LINK_FLAGS),$$(LINK_FLAGS))
+  endif
+
+  ifeq ($$(strip $$($1.STANDARD)),)
+    override _$1_cxx_std := $$(_cxx_std)
+    override _$1_c_std := $$(_c_std)
+  else ifneq ($$(strip $$($1.STANDARD)),-)
+    $$(eval $$(call _check_standard,$1.STANDARD,_$1))
+  endif
+
+  ifeq ($$(strip $$($1.OPTIONS)),)
+    override _$1_op_warn := $$(_op_warn)
+    override _$1_op_flags := $$(_op_flags)
+    override _$1_op_link := $$(_op_link)
+    override _$1_op_cxx_warn := $$(_op_cxx_warn)
+    override _$1_op_cxx_flags := $$(_op_cxx_flags)
+    override _$1_op_cxx_link := $$(_op_cxx_link)
+  else ifneq ($$(strip $$($1.OPTIONS)),-)
+    $$(eval $$(call _check_options,$1.OPTIONS,_$1))
+  endif
+
+  ifneq ($$(strip $$($1.PACKAGES)),-)
+    override _$1_pkgs := $$(or $$(call _check_pkgs,$1.PACKAGES),$$(_pkgs))
+  endif
+
+  ifneq ($$(strip $$($1.LIBS)),-)
+    override _$1_libs := $$(or $$(call _format_target_libs,$$($1.LIBS)),$$(_libs))
+  endif
+
+  ifneq ($$(strip $$($1.DEFINE)),-)
+    override _$1_define := $$(or $$(call _format_define,$$($1.DEFINE)),$$(_define))
+  endif
+
+  ifneq ($$(strip $$($1.INCLUDE)),-)
+    override _$1_include := $$(or $$(call _format_include,$$($1.INCLUDE)),$$(_include))
+  endif
+
+  ifneq ($$(strip $$($1.FLAGS)),-)
+    override _$1_flags := $$(or $$($1.FLAGS),$$(FLAGS))
+  endif
+  endef
+  $(foreach x,$(_src_labels),$(eval $(call _build_entry1,$x)))
+
+  ## general entry setting parsing (post)
+  override define _build_entry2  # <1:label> <2:test flag>
+  ifneq ($$(strip $$($1.LIBS)),-)
+    override _$1_req_pkgs1 := $$(foreach x,$$($1.LIBS),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_pkgs)))
+    override _$1_req_libs1 := $$(foreach x,$$($1.LIBS),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_libs)))
+    override _$1_link_deps := $$(foreach x,$$($1.LIBS),$$(if $$(filter $$x,$$(_lib_labels)),$$(or $$(_$$x_shared_name),$$(_$$x_name))))
+  endif
+
+  ifneq ($$(strip $$($1.OBJS)),-)
+    override _$1_req_pkgs2 := $$(foreach x,$$($1.OBJS),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_pkgs)))
+    override _$1_req_libs2 := $$(foreach x,$$($1.OBJS),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_libs)))
+  endif
+
+  override _$1_xpkgs := $$(sort $$(_$1_pkgs) $$(if $2,$$(_pkgs_test)) $$(_$1_req_pkgs1) $$(_$1_req_pkgs2))
+  ifneq ($$(_$1_xpkgs),)
+    override _$1_pkg_libs := $$(call _get_pkg_libs,$$(_$1_xpkgs))
+    override _$1_pkg_flags := $$(call _get_pkg_flags,$$(_$1_xpkgs))
+    ifeq ($$(_$1_xpkgs),$$(_pkgs))
+      override _$1_pkg_trigger := .packages_ver
+    else ifeq ($$(_$1_xpkgs),$$(sort $$(_pkgs) $$(_pkgs_test)))
+      override _$1_pkg_trigger := .packages_ver-tests
+    else
+      override _$1_pkg_trigger := .packages_ver-$1
+      override _$1_make_pkg_trigger := 1
+    endif
+  endif
+
+  override _$1_xlibs := $$(_$1_libs) $$(if $2,$$(_libs_test)) $$(_$1_req_libs1) $$(_$1_req_libs2) $$(_$1_pkg_libs)
+
+  # NOTE: LIBS before PACKAGES libs in case included static lib requires package
+  override _$1_xflags := $$(_$1_pkg_flags) $$(_$1_flags) $$(FLAGS_$$(_$$(ENV)_uc)) $$(if $2,$$(FLAGS_TEST))
+  override _cxxflags_$$(ENV)-$1 := $$(strip $$(or $$($1.CXXFLAGS),$$(CXXFLAGS),$$(_$1_cxx_std) $$(call _$$(ENV)_op,$1) $$(_warn) $$(_$1_op_cxx_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_cxx_flags) $$(_$1_xflags)))
+  override _cflags_$$(ENV)-$1 := $$(strip $$(or $$($1.CFLAGS),$$(CFLAGS),$$(_$1_c_std) $$(call _$$(ENV)_op,$1) $$(_warn_c) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_xflags)))
+  override _asflags_$$(ENV)-$1 := $$(strip $$(or $$($1.ASFLAGS),$$(ASFLAGS),$$(call _$$(ENV)_op,$1) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_xflags)))
+
+  override _$1_build := $$(ENV)-$1
+  ifeq ($$(_$1_deps),)
+    # if compile flags match then use a shared build path
+    ifeq ($$(_cxxflags_$$(ENV)-$1),$$(_cxxflags_$$(ENV)-test))
+      ifeq ($$(_cflags_$$(ENV)-$1),$$(_cflags_$$(ENV)-test))
+        ifeq ($$(_asflags_$$(ENV)-$1),$$(_asflags_$$(ENV)-test))
+          override _$1_build := $$(ENV)-test
+        endif
+      endif
+    endif
+    ifeq ($$(_cxxflags_$$(ENV)-$1),$$(_cxxflags_$$(ENV)))
+      ifeq ($$(_cflags_$$(ENV)-$1),$$(_cflags_$$(ENV)))
+        ifeq ($$(_asflags_$$(ENV)-$1),$$(_asflags_$$(ENV)))
+          override _$1_build := $$(ENV)
+        endif
+      endif
+    endif
+  endif
+  endef
+  $(foreach x,$(_lib_labels) $(_bin_labels),$(eval $(call _build_entry2,$x,)))
+  $(foreach x,$(_test_labels),$(eval $(call _build_entry2,$x,test)))
+
+  # NOTES:
+  # - <label>.DEPS can cause an isolated build even though there are no compile
+  #   flag changes (target 'source.o : | dep' rules would affect other builds
+  #   without isolation)
+  # - .SRC wildcard support doesn't work for wildcards in directory names, only
+  #   file names
+
   $(foreach x,$(_test_labels),\
     $(eval override _$x_aliases := $x$(SFX))\
     $(eval override _$x_run := $(BUILD_DIR)/$(_$x_build)/__$x))
 
-  # determine LDFLAGS value for each target
+  # check for source conflicts like src/file.cc & src/file.cpp
+  override _all_source := $(sort $(foreach x,$(_src_labels),$(_$x_src)))
+  override _all_source_base := $(call _src_bname,$(_all_source))
+  ifneq ($(words $(_all_source_base)),$(words $(sort $(_all_source_base))))
+    $(error $(_msgErr)Conflicting source files - each basename must be unique$(_end))
+  endif
+
+  # halt build for package errors on non-test entries
+  $(eval $(call _verify_pkgs,PACKAGES,_pkgs))
+  $(foreach x,$(_bin_labels) $(_lib_labels),$(eval $(call _verify_pkgs,$x.PACKAGES,_$x_pkgs)))
+
+  # determine LDFLAGS value for each entry
   $(foreach x,$(_src_labels),\
     $(eval override _$x_ldflags := $(or $(strip $($x.LDFLAGS)),$(strip $(LDFLAGS)),\
       -Wl$(_comma)--as-needed -L$(or $(_$(ENV)_ldir),.)\
@@ -795,7 +853,7 @@ else ifneq ($(_build_env),)
       $(if $(filter cxx,$(_$x_lang)),$(_$x_op_cxx_link),$(_$x_op_link))\
       $(_$x_link_flags))))
 
-  # file target command evaluation
+  # file entry command evaluation
   $(foreach x,$(_file_labels),\
     $(eval override OUT := $($x))\
     $(eval override DEPS := $($x.DEPS))\
@@ -859,7 +917,7 @@ endef
 $(foreach e,$(_env_names),$(eval $(call _setup_env_targets,$e)))
 
 clean:
-	@$(RM) "$(BUILD_DIR)/.compiler_ver" "$(BUILD_DIR)/.packages_ver"* $(foreach x,$(SYMLINKS),"$x")
+	@$(RM) "$(BUILD_DIR)/.compiler_ver" "$(BUILD_DIR)/.packages_ver"* $(foreach x,$(_symlinks),"$x")
 	@([ -d "$(BUILD_DIR)" ] && rmdir -p -- "$(BUILD_DIR)") || true
 	@for X in $(CLEAN_EXTRA) $(foreach e,$(_env_names),$(_$e_file_targets)); do\
 	  (([ -f "$$X" ] || [ -h "$$X" ]) && echo "$(_msgWarn)Removing '$$X'$(_end)" && $(RM) "$$X") || true; done
@@ -930,7 +988,7 @@ endef
 # shared library build
 override define _make_shared_lib  # <1:label>
 override _$1_shared_objs := $$(addprefix $$(BUILD_DIR)/$$(_$1_build)$$(if $$(_pic_flag),-pic)/,$$(_$1_src_objs))
-override _$1_shared_link_cmd := $$(strip $$(call _do_link,$1) $$(_pic_flag) -shared $$(_$1_shared_objs) $$(_$1_other_objs) $$(_$1_libs)) -o '$$(_$1_shared_name)'
+override _$1_shared_link_cmd := $$(strip $$(call _do_link,$1) $$(_pic_flag) -shared $$(_$1_shared_objs) $$(_$1_other_objs) $$(_$1_xlibs)) -o '$$(_$1_shared_name)'
 override _$1_shared_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1-shared
 $$(eval $$(call _rebuild_check,$$$$(_$1_shared_trigger),$$$$(_$1_shared_link_cmd)))
 
@@ -940,7 +998,7 @@ endif
 
 .PHONY: $$(_$1_shared_aliases)
 $$(_$1_shared_aliases) $$(_$1_implib): $$(_$1_shared_name)
-$$(_$1_shared_name): $$(_$1_shared_objs) $$(_$1_other_objs) $$(_$1_shared_trigger)
+$$(_$1_shared_name): $$(_$1_shared_objs) $$(_$1_other_objs) $$(_$1_link_deps) $$(_$1_shared_trigger)
 	$$(call _make_path,$$@)
 	$$(call _make_path,$$(_$1_implib))
 	$$(_$1_shared_link_cmd)
@@ -951,7 +1009,7 @@ endef
 # binary build
 override define _make_bin  # <1:label>
 override _$1_all_objs := $$(addprefix $$(BUILD_DIR)/$$(_$1_build)/,$$(_$1_src_objs))
-override _$1_link_cmd := $$(strip $$(call _do_link,$1) $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_libs)) -o '$$(_$1_name)'
+override _$1_link_cmd := $$(strip $$(call _do_link,$1) $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_xlibs)) -o '$$(_$1_name)'
 override _$1_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1
 $$(eval $$(call _rebuild_check,$$$$(_$1_trigger),$$$$(_$1_link_cmd)))
 
@@ -961,7 +1019,7 @@ endif
 
 .PHONY: $$(_$1_aliases)
 $$(_$1_aliases): $$(_$1_name)
-$$(_$1_name): $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_trigger) | $$(_lib_goals)
+$$(_$1_name): $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_link_deps) $$(_$1_trigger) | $$(_lib_goals)
 	$$(call _make_path,$$@)
 	$$(_$1_link_cmd)
 	@echo "$$(_msgInfo)Binary '$$@' built$$(_end)"
@@ -987,7 +1045,7 @@ endef
 #     run test if rebuilt
 override define _make_test  # <1:label>
 override _$1_all_objs := $$(addprefix $$(BUILD_DIR)/$$(_$1_build)/,$$(_$1_src_objs))
-override _$1_link_cmd := $$(strip $$(call _do_link,$1) $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_libs)) -o '$$(_$1_run)'
+override _$1_link_cmd := $$(strip $$(call _do_link,$1) $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_xlibs)) -o '$$(_$1_run)'
 override _$1_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1
 $$(eval $$(call _rebuild_check,$$$$(_$1_trigger),$$$$(_$1_link_cmd)))
 
@@ -995,7 +1053,7 @@ ifneq ($$(_$1_deps),)
 $$(_$1_all_objs): | $$(_$1_deps)
 endif
 
-$$(_$1_run): $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_trigger) | $$(_lib_goals) $$(_bin_goals)
+$$(_$1_run): $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_link_deps) $$(_$1_trigger) | $$(_lib_goals) $$(_bin_goals)
 	$$(_$1_link_cmd)
 ifeq ($$(filter tests tests_$$(ENV) $1$$(SFX),$$(MAKECMDGOALS)),)
 	@LD_LIBRARY_PATH=.:$$$$LD_LIBRARY_PATH ./$$(_$1_run) $$($1.ARGS);\
@@ -1013,7 +1071,7 @@ endef
 
 
 override define _make_dep  # <1:path> <2:build> <3:src> <4:cmd trigger>
-$1/$(call _src_bname,$3).o: $(_src_path)$3 $1/$4 $$(BUILD_DIR)/.compiler_ver $$(_pkg_trigger-$2) | $$(SYMLINKS)
+$1/$(call _src_bname,$3).o: $(_src_path)$3 $1/$4 $$(BUILD_DIR)/.compiler_ver $$(_pkg_trigger-$2) | $$(_symlinks)
 -include $1/$(call _src_bname,$3).mk
 endef
 
@@ -1045,7 +1103,7 @@ endef
 .DELETE_ON_ERROR:
 ifneq ($(_build_env),)
   # symlink creation rule
-  $(foreach x,$(SYMLINKS),$(eval $x: ; @ln -s . "$x"))
+  $(foreach x,$(_symlinks),$(eval $x: ; @ln -s . "$x"))
 
   # .compiler_ver rule (rebuild trigger for compiler version change)
   $(eval $(call _rebuild_check,$(BUILD_DIR)/.compiler_ver,$(shell $(CC) --version | head -1)))
@@ -1053,15 +1111,15 @@ ifneq ($(_build_env),)
   # .packages_ver rules (rebuild triggers for package version changes)
   $(if $(_pkgs),\
     $(eval override _pkg_trigger-$(ENV) := $(BUILD_DIR)/.packages_ver)\
-    $(eval $(call _rebuild_check,$(BUILD_DIR)/.packages_ver,$(foreach p,$(sort $(_pkgs)),$p:$(call _get_pkg_ver,$p)))))
+    $(eval $(call _rebuild_check,$(BUILD_DIR)/.packages_ver,$(call _gen_pkg_ver_list,$(_pkgs)))))
 
-  $(if $(_test_pkgs),\
+  $(if $(_pkgs_test),\
     $(eval override _pkg_trigger-$(ENV)-tests := $(BUILD_DIR)/.packages_ver-tests)\
-    $(eval $(call _rebuild_check,$(BUILD_DIR)/.packages_ver-tests,$(foreach p,$(sort $(_pkgs) $(_test_pkgs)),$p:$(call _get_pkg_ver,$p)))))
+    $(eval $(call _rebuild_check,$(BUILD_DIR)/.packages_ver-tests,$(call _gen_pkg_ver_list,$(_pkgs) $(_pkgs_test)))))
 
-  $(foreach x,$(_src_labels),\
-    $(if $(_$x_pkg_trigger),$(eval override _pkg_trigger-$(ENV)-$x := $(BUILD_DIR)/$(_$x_pkg_trigger)))\
-    $(if $(_$x_pkgs),$(eval $(call _rebuild_check,$(BUILD_DIR)/$(_$x_pkg_trigger),$(foreach p,$(sort $(_$x_pkgs)),$p:$(call _get_pkg_ver,$p))))))
+  $(foreach x,$(_src_labels),$(if $(_$x_make_pkg_trigger),\
+    $(eval override _pkg_trigger-$(ENV)-$x := $(BUILD_DIR)/$(_$x_pkg_trigger))\
+    $(eval $(call _rebuild_check,$(BUILD_DIR)/$(_$x_pkg_trigger),$(call _gen_pkg_ver_list,$(_$x_xpkgs))))))
 
   # make .o/.mk files for each build path
   # NOTES:

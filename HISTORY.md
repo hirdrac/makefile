@@ -1,5 +1,20 @@
 # Version release history
 
+
+## 1.14 - general release (2020/7/26)
+NEW FEATURES:
+* <X>.LIBS (target specific LIBS settings) now accepts library label targets (i.e.: BIN1.LIBS = LIB1) to link with that library as well as include PACKAGES/LIBS from the library automatically.
+* <X>.OBJS can also accept library labels like <X>.LIBS but only for static libraries.  (LIBS will prefer shared libraries if available instead of static)
+
+CHANGES:
+* Made isolated build check more robust so it will more often use a shared build instead of an unnecessary isolated build.  (does an exact flag comparison instead of just seeing that target settings are used that could generate different values for a compile command)
+* Improved error detection of bad values in *_DIR settings (no spaces, no '*' wildcard).
+
+FIXES:
+* Fixed 'Unknown binary parameter' warning when setting target specific 'LINK_FLAGS' setting (i.e.: BIN1.LINK_FLAGS = xxx)
+* Symlinks created by 'SYMLINKS' setting now are created in the proper directory if 'SOURCE_DIR' is set.
+* Fixed wildcards in directory names for source file settings ('BIN1.SRC = */file.cc' now works as expected).
+
 ## 1.13 - general release (2020/6/29)
 NEW FEATURES:
 * FILE_<id>, TEST_<id> now available as file/test labels.
