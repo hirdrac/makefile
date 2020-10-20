@@ -1,5 +1,17 @@
 # Version release history
 
+## 1.15 - general release (2020/10/16)
+NEW FEATURES:
+* 'SOURCE_DIR' can now set for specific targets.  If set, target will build in isolation.
+* Added 'pedantic' option to enforce ISO C/C++ complience (adds -Wpedantic -pedantic-errors compile flags).
+* Added error checking for using $(DEPS) in a file command definition but FILE<X>.DEPS isn't defined.
+
+CHANGES:
+* To be consistent with BIN/LIB targets, FILE targets are deleted with 'clobber' instead of the 'clean' target.  (Files created in $(BUILD_TMP) are still deleted with the 'clean' target, however.)
+* Added 'write-strings' warning to default C warnings.
+
+FIXES:
+* Fixed encoding of '$' in FILE<x>.CMD config.  File targets that need to encode '$' in the command string should use '$$' to prevent it from being evaluated as a make variable.
 
 ## 1.14 - general release (2020/7/26)
 NEW FEATURES:

@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.14 (2020/7/26)
+# Makefile.mk - version 1.15 (2020/10/16)
 # Copyright (C) 2020 Richard Bradley
 #
 # Additional contributions from:
@@ -35,7 +35,7 @@
 #  debug           builds debug versions of all binaries/libraries/tests
 #  profile         builds gprof versions of all binaries/libraries/tests
 #  clean           deletes build directory & test binaries
-#  clobber         deletes build directory & built binaries/libraries
+#  clobber         deletes build directory & built binaries/libraries/files
 #  tests           run all tests for DEFAULT_ENV
 #  info            prints summary of defined build targets
 #  help            prints command summary
@@ -95,6 +95,7 @@
 #    modern_c++    enable warnings for some old-style C++ syntax (pre C++11)
 #    no_rtti       disable C++ RTTI
 #    no_except     disable C++ exceptions
+#    pedantic      enforces strict ISO C/C++ compliance
 #    static_rtlib  staticly link with runtime library (libgcc usually)
 #    static_stdlib staticly link with C++ standard library (libstdc++ usually)
 #  FLAGS           additional compiler flags not otherwise specified
@@ -121,8 +122,9 @@
 #  SOURCE_DIR      source files base directory
 #
 #  Settings STANDARD/OPT_LEVEL/OPT_LEVEL_DEBUG/SUBSYSTEM/PACKAGES/INCLUDE/LIBS/
-#    DEFINE/OPTIONS/FLAGS/LINK_FLAGS/CXXFLAGS/CFLAGS/ASFLAGS/LDFLAGS can be set
-#    for specific targets to override global values (ex.: BIN1.FLAGS = -pthread)
+#    DEFINE/OPTIONS/FLAGS/LINK_FLAGS/CXXFLAGS/CFLAGS/ASFLAGS/LDFLAGS/SOURCE_DIR
+#    can be set for specific targets to override global values
+#    (ex.: BIN1.FLAGS = -pthread)
 #    A value of '-' can be used to clear the setting for the target
 #
 #  Filename wildcard '*' supported for .SRC,.DEPS,.OBJS settings
@@ -169,7 +171,7 @@ OPT_LEVEL ?= 3
 OPT_LEVEL_DEBUG ?= g
 ifndef WARN
   WARN = all extra no-unused-parameter non-virtual-dtor overloaded-virtual $(_$(COMPILER)_warn)
-  WARN_C ?= all extra no-unused-parameter $(_$(COMPILER)_warn)
+  WARN_C ?= all extra no-unused-parameter write-strings $(_$(COMPILER)_warn)
 else
   WARN_C ?= $(WARN)
 endif
@@ -336,10 +338,7 @@ endef
 
 
 #### OPTIONS handling ####
-# full option list
-override _op_list := warn_error pthread lto modern_c++ no_rtti no_except static_rtlib static_stdlib
-# options that require isolated build (no link-only options)
-override _op_list2 := warn_error pthread lto modern_c++ no_rtti no_except
+override _op_list := warn_error pthread lto modern_c++ no_rtti no_except pedantic static_rtlib static_stdlib
 
 override define _check_options  # <1:options var> <2:set prefix>
 ifneq ($$(filter-out $$(_op_list),$$($1)),)
@@ -356,6 +355,10 @@ ifneq ($$(filter pthread,$$($1)),)
 endif
 ifneq ($$(filter lto,$$($1)),)
   override $2_op_flags += -flto
+endif
+ifneq ($$(filter pedantic,$$($1)),)
+  override $2_op_warn += -Wpedantic
+  override $2_op_flags += -pedantic-errors
 endif
 ifneq ($$(filter static_rtlib,$$($1)),)
   override $2_op_link += -static-libgcc
@@ -402,7 +405,7 @@ endef
 $(foreach x,$(_template_labels),$(eval $(call _check_template_entry,$x)))
 
 ifneq ($(words $(foreach t,$(_template_labels),$($t_labels))),$(words $(sort $(foreach t,$(_template_labels),$($t_labels)))))
-  $(error $(_msgErr)multiple templates contain the same FILE entry$(_end))
+  $(error $(_msgErr)Multiple templates contain the same FILE entry$(_end))
 endif
 
 # create file entries from templates
@@ -460,7 +463,7 @@ endef
 $(foreach x,$(_lib_labels) $(_bin_labels),$(eval $(call _check_name,$x)))
 
 # target setting patterns
-override _bin_ptrn := %.SRC %.OBJS %.LIBS %.STANDARD %.OPT_LEVEL %.OPT_LEVEL_DEBUG %.DEFINE %.INCLUDE %.FLAGS %.LINK_FLAGS %.PACKAGES %.OPTIONS %.DEPS %.SUBSYSTEM %.CXXFLAGS %.CFLAGS %.ASFLAGS %.LDFLAGS
+override _bin_ptrn := %.SRC %.OBJS %.LIBS %.STANDARD %.OPT_LEVEL %.OPT_LEVEL_DEBUG %.DEFINE %.INCLUDE %.FLAGS %.LINK_FLAGS %.PACKAGES %.OPTIONS %.DEPS %.SUBSYSTEM %.CXXFLAGS %.CFLAGS %.ASFLAGS %.LDFLAGS %.SOURCE_DIR
 override _lib_ptrn := %.TYPE %.VERSION $(_bin_ptrn)
 override _test_ptrn := %.ARGS $(_bin_ptrn)
 
@@ -539,7 +542,7 @@ override _static_lib_labels := $(strip $(foreach x,$(_lib_labels),$(if $($x.TYPE
 override _shared_lib_labels := $(strip $(foreach x,$(_lib_labels),$(if $(filter shared,$($x.TYPE)),$x)))
 
 $(eval $(call _check_dir,SOURCE_DIR))
-override _src_path := $(if $(SOURCE_DIR),$(SOURCE_DIR:%/=%)/)
+override _src_path := $(if $(SOURCE_DIR),$(filter-out ./,$(SOURCE_DIR:%/=%)/))
 override _symlinks := $(addprefix $(_src_path),$(SYMLINKS))
 
 # output target name generation macros - <1:build env> <2:label>
@@ -654,12 +657,14 @@ else ifneq ($(_build_env),)
   override _cxxflags_$(ENV) := $(strip $(or $(CXXFLAGS),$(_cxx_std) $(_$(ENV)_op) $(_warn) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_xflags)))
   override _cflags_$(ENV) := $(strip $(or $(CFLAGS),$(_c_std) $(_$(ENV)_op) $(_warn_c) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_xflags)))
   override _asflags_$(ENV) := $(strip $(or $(ASFLAGS),$(_$(ENV)_op) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_xflags)))
+  override _src_path_$(ENV) := $(_src_path)
 
   ifneq ($(_pkg_flags),$(strip $(_test_pkg_flags) $(FLAGS_TEST)))
     override _test_xflags :=  $(_test_pkg_flags) $(FLAGS) $(FLAGS_$(_$(ENV)_uc)) $(FLAGS_TEST)
     override _cxxflags_$(ENV)-tests := $(strip $(or $(CXXFLAGS),$(_cxx_std) $(_$(ENV)_op) $(_warn) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_test_xflags)))
     override _cflags_$(ENV)-tests := $(strip $(or $(CFLAGS),$(_c_std) $(_$(ENV)_op) $(_warn_c) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_test_xflags)))
     override _asflags_$(ENV)-tests := $(strip $(or $(ASFLAGS),$(_$(ENV)_op) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_test_xflags)))
+    override _src_path_$(ENV)-tests := $(_src_path)
   endif
 
   override _libs := $(call _format_global_libs,$(LIBS))
@@ -696,7 +701,13 @@ else ifneq ($(_build_env),)
 
   ## general entry setting parsing (pre)
   override define _build_entry1  # <1:label>
-  override _$1_src := $$(foreach x,$$($1.SRC),$$(if $$(findstring *,$$x),$$(patsubst $(_src_path)%,%,$$(wildcard $$(_src_path)$$x)),$$x))
+  ifneq ($$(strip $$($1.SOURCE_DIR)),-)
+    $$(eval $$(call _check_dir,$1.SOURCE_DIR))
+    override _$1_source_dir := $$(if $$($1.SOURCE_DIR),$$(filter-out ./,$$($1.SOURCE_DIR:%/=%)/))
+    override _src_path_$$(ENV)-$1 := $$(or $$(_$1_source_dir),$$(_src_path))
+  endif
+
+  override _$1_src := $$(foreach x,$$($1.SRC),$$(if $$(findstring *,$$x),$$(patsubst $$(_src_path_$$(ENV)-$1)%,%,$$(wildcard $$(_src_path_$$(ENV)-$1)$$x)),$$x))
   ifeq ($$(strip $$($1.SRC)),)
     $$(error $$(_msgErr)$1.SRC: no source files specified$$(_end))
   else ifeq ($$(strip $$(_$1_src)),)
@@ -800,19 +811,21 @@ else ifneq ($(_build_env),)
   override _asflags_$$(ENV)-$1 := $$(strip $$(or $$($1.ASFLAGS),$$(ASFLAGS),$$(call _$$(ENV)_op,$1) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_xflags)))
 
   override _$1_build := $$(ENV)-$1
-  ifeq ($$(_$1_deps),)
-    # if compile flags match then use a shared build path
-    ifeq ($$(_cxxflags_$$(ENV)-$1),$$(_cxxflags_$$(ENV)-test))
-      ifeq ($$(_cflags_$$(ENV)-$1),$$(_cflags_$$(ENV)-test))
-        ifeq ($$(_asflags_$$(ENV)-$1),$$(_asflags_$$(ENV)-test))
-          override _$1_build := $$(ENV)-test
+  ifeq ($$(_src_path_$$(ENV)-$1),$$(_src_path))
+    ifeq ($$(_$1_deps),)
+      # if compile flags match then use a shared build path
+      ifeq ($$(_cxxflags_$$(ENV)-$1),$$(_cxxflags_$$(ENV)-test))
+        ifeq ($$(_cflags_$$(ENV)-$1),$$(_cflags_$$(ENV)-test))
+          ifeq ($$(_asflags_$$(ENV)-$1),$$(_asflags_$$(ENV)-test))
+            override _$1_build := $$(ENV)-test
+          endif
         endif
       endif
-    endif
-    ifeq ($$(_cxxflags_$$(ENV)-$1),$$(_cxxflags_$$(ENV)))
-      ifeq ($$(_cflags_$$(ENV)-$1),$$(_cflags_$$(ENV)))
-        ifeq ($$(_asflags_$$(ENV)-$1),$$(_asflags_$$(ENV)))
-          override _$1_build := $$(ENV)
+      ifeq ($$(_cxxflags_$$(ENV)-$1),$$(_cxxflags_$$(ENV)))
+        ifeq ($$(_cflags_$$(ENV)-$1),$$(_cflags_$$(ENV)))
+          ifeq ($$(_asflags_$$(ENV)-$1),$$(_asflags_$$(ENV)))
+            override _$1_build := $$(ENV)
+          endif
         endif
       endif
     endif
@@ -856,10 +869,10 @@ else ifneq ($(_build_env),)
   # file entry command evaluation
   $(foreach x,$(_file_labels),\
     $(eval override OUT := $($x))\
-    $(eval override DEPS := $($x.DEPS))\
+    $(eval override DEPS := $(or $($x.DEPS),$$(error $$(_msgErr)Cannot use DEPS if $x.DEPS is not set$$(_end))))\
     $(foreach n,$(wordlist 1,$(words $($x.DEPS)),$(_1-99)),\
       $(eval override DEP$n := $(word $n,$($x.DEPS))))\
-    $(eval override _$x_command := $($x.CMD)))
+    $(eval override _$x_command := $(value $x.CMD)))
 
   # binaries depend on lib goals to make sure libs are built first
   override _lib_goals :=\
@@ -919,13 +932,13 @@ $(foreach e,$(_env_names),$(eval $(call _setup_env_targets,$e)))
 clean:
 	@$(RM) "$(BUILD_DIR)/.compiler_ver" "$(BUILD_DIR)/.packages_ver"* $(foreach x,$(_symlinks),"$x")
 	@([ -d "$(BUILD_DIR)" ] && rmdir -p -- "$(BUILD_DIR)") || true
-	@for X in $(CLEAN_EXTRA) $(foreach e,$(_env_names),$(_$e_file_targets)); do\
+	@for X in $(CLEAN_EXTRA); do\
 	  (([ -f "$$X" ] || [ -h "$$X" ]) && echo "$(_msgWarn)Removing '$$X'$(_end)" && $(RM) "$$X") || true; done
 
 clobber: clean
-	@for X in $(foreach e,$(_env_names),$(_$e_libbin_targets) $(_$e_links)) core gmon.out $(CLOBBER_EXTRA); do\
+	@for X in $(foreach e,$(_env_names),$(_$e_libbin_targets) $(_$e_file_targets) $(_$e_links)) core gmon.out $(CLOBBER_EXTRA); do\
 	  (([ -f "$$X" ] || [ -h "$$X" ]) && echo "$(_msgWarn)Removing '$$X'$(_end)" && $(RM) "$$X") || true; done
-	@for X in $(foreach y,$(sort $(filter-out ./,$(foreach e,$(_env_names),$(foreach x,$(_$e_libbin_targets),$(dir $x))))),"$y"); do\
+	@for X in $(foreach y,$(sort $(filter-out ./,$(foreach e,$(_env_names),$(foreach x,$(_$e_libbin_targets) $(_$e_file_targets),$(dir $x))))),"$y"); do\
 	  ([ -d "$$X" ] && rmdir -p --ignore-fail-on-non-empty -- "$$X") || true; done
 
 install: ; $(error $(_msgErr)Target 'install' not implemented$(_end))
@@ -950,12 +963,17 @@ endif
 
 #### Build Macros ####
 override define _rebuild_check  # <1:trigger file> <2:trigger text>
-ifneq ($$(file <$1),$2)
-  $$(shell $$(RM) "$1")
+ifneq ($$(strip $$(file <$1)),$$(strip $2))
+  $$(if $$(strip $$(filter-out ./,$$(dir $1))),$$(shell mkdir -p "$$(dir $1)"))
+  $$(file >$1,$2)
 endif
-$1:
-	@mkdir -p "$$(@D)"
-	@echo -n "$2" >$1
+endef
+
+override define _rebuild_check_var # <1:trigger file> <2:trigger text var>
+ifneq ($$(strip $$(file <$1)),$$(strip $$($2)))
+  $$(if $$(strip $$(filter-out ./,$$(dir $1))),$$(shell mkdir -p "$$(dir $1)"))
+  $$(file >$1,$$(value $2))
+endif
 endef
 
 # make path of input file - <1:file w/ path>
@@ -969,7 +987,7 @@ override define _make_static_lib  # <1:label>
 override _$1_all_objs := $$(addprefix $$(BUILD_DIR)/$$(_$1_build)/,$$(_$1_src_objs))
 override _$1_link_cmd := $$(AR) rc '$$(_$1_name)' $$(strip $$(_$1_all_objs) $$(_$1_other_objs))
 override _$1_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1-static
-$$(eval $$(call _rebuild_check,$$$$(_$1_trigger),$$$$(_$1_link_cmd)))
+$$(eval $$(call _rebuild_check_var,$$$$(_$1_trigger),_$1_link_cmd))
 
 ifneq ($$(_$1_deps),)
 $$(_$1_all_objs): | $$(_$1_deps)
@@ -990,7 +1008,7 @@ override define _make_shared_lib  # <1:label>
 override _$1_shared_objs := $$(addprefix $$(BUILD_DIR)/$$(_$1_build)$$(if $$(_pic_flag),-pic)/,$$(_$1_src_objs))
 override _$1_shared_link_cmd := $$(strip $$(call _do_link,$1) $$(_pic_flag) -shared $$(_$1_shared_objs) $$(_$1_other_objs) $$(_$1_xlibs)) -o '$$(_$1_shared_name)'
 override _$1_shared_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1-shared
-$$(eval $$(call _rebuild_check,$$$$(_$1_shared_trigger),$$$$(_$1_shared_link_cmd)))
+$$(eval $$(call _rebuild_check_var,$$$$(_$1_shared_trigger),_$1_shared_link_cmd))
 
 ifneq ($$(_$1_deps),)
 $$(_$1_shared_objs): | $$(_$1_deps)
@@ -1011,7 +1029,7 @@ override define _make_bin  # <1:label>
 override _$1_all_objs := $$(addprefix $$(BUILD_DIR)/$$(_$1_build)/,$$(_$1_src_objs))
 override _$1_link_cmd := $$(strip $$(call _do_link,$1) $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_xlibs)) -o '$$(_$1_name)'
 override _$1_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1
-$$(eval $$(call _rebuild_check,$$$$(_$1_trigger),$$$$(_$1_link_cmd)))
+$$(eval $$(call _rebuild_check_var,$$$$(_$1_trigger),_$1_link_cmd))
 
 ifneq ($$(_$1_deps),)
 $$(_$1_all_objs): | $$(_$1_deps)
@@ -1028,13 +1046,13 @@ endef
 # generic file build
 override define _make_file  # <1:label>
 override _$1_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1
-$$(eval $$(call _rebuild_check,$$$$(_$1_trigger),$$$$($1.CMD)))
+$$(eval $$(call _rebuild_check_var,$$$$(_$1_trigger),_$1_command))
 
 .PHONY: $1$$(SFX)
 $1$$(SFX): $$($1)
 $$($1): $$(_$1_trigger) $$(_$1_deps)
 	$$(call _make_path,$$@)
-	$$(_$1_command)
+	$$(value _$1_command)
 	@echo "$$(_msgInfo)File '$$@' created$$(_end)"
 endef
 
@@ -1047,7 +1065,7 @@ override define _make_test  # <1:label>
 override _$1_all_objs := $$(addprefix $$(BUILD_DIR)/$$(_$1_build)/,$$(_$1_src_objs))
 override _$1_link_cmd := $$(strip $$(call _do_link,$1) $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_xlibs)) -o '$$(_$1_run)'
 override _$1_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1
-$$(eval $$(call _rebuild_check,$$$$(_$1_trigger),$$$$(_$1_link_cmd)))
+$$(eval $$(call _rebuild_check_var,$$$$(_$1_trigger),_$1_link_cmd))
 
 ifneq ($$(_$1_deps),)
 $$(_$1_all_objs): | $$(_$1_deps)
@@ -1071,7 +1089,7 @@ endef
 
 
 override define _make_dep  # <1:path> <2:build> <3:src> <4:cmd trigger>
-$1/$(call _src_bname,$3).o: $(_src_path)$3 $1/$4 $$(BUILD_DIR)/.compiler_ver $$(_pkg_trigger-$2) | $$(_symlinks)
+$1/$(call _src_bname,$3).o: $$(_src_path_$2)$3 $1/$4 $$(BUILD_DIR)/.compiler_ver $$(_pkg_trigger_$2) | $$(_symlinks)
 -include $1/$(call _src_bname,$3).mk
 endef
 
@@ -1079,19 +1097,19 @@ override define _make_obj  # <1:path> <2:build> <3:flags> <4:src list>
 ifneq ($4,)
 $1/%.mk: ; @$$(RM) "$$(@:.mk=.o)"
 
-$$(eval $$(call _rebuild_check,$1/.compile_cmd_c,$$(strip $$(CC) $$(_cflags_$2) $3)))
+$$(eval $$(call _rebuild_check,$1/.compile_cmd_c,$$(CC) $$(_cflags_$2) $3))
 $(addprefix $1/,$(addsuffix .o,$(call _src_bname,$(filter $(_c_ptrn),$4)))):
 	$$(strip $$(CC) $$(_cflags_$2) $3) -MMD -MP -MT '$$@' -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_c_ptrn),$4),\
   $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd_c)))
 
-$$(eval $$(call _rebuild_check,$1/.compile_cmd_s,$$(strip $$(AS) $$(_asflags_$2) $3)))
+$$(eval $$(call _rebuild_check,$1/.compile_cmd_s,$$(AS) $$(_asflags_$2) $3))
 $(addprefix $1/,$(addsuffix .o,$(call _src_bname,$(filter $(_asm_ptrn),$4)))):
 	$$(strip $$(AS) $$(_asflags_$2) $3) -MMD -MP -MT '$$@' -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_asm_ptrn),$4),\
   $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd_s)))
 
-$$(eval $$(call _rebuild_check,$1/.compile_cmd,$$(strip $$(CXX) $$(_cxxflags_$2) $3)))
+$$(eval $$(call _rebuild_check,$1/.compile_cmd,$$(CXX) $$(_cxxflags_$2) $3))
 $1/%.o: ; $$(strip $$(CXX) $$(_cxxflags_$2) $3) -MMD -MP -MT '$$@' -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_cxx_ptrn),$4),\
   $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd)))
@@ -1110,15 +1128,15 @@ ifneq ($(_build_env),)
 
   # .packages_ver rules (rebuild triggers for package version changes)
   $(if $(_pkgs),\
-    $(eval override _pkg_trigger-$(ENV) := $(BUILD_DIR)/.packages_ver)\
+    $(eval override _pkg_trigger_$(ENV) := $(BUILD_DIR)/.packages_ver)\
     $(eval $(call _rebuild_check,$(BUILD_DIR)/.packages_ver,$(call _gen_pkg_ver_list,$(_pkgs)))))
 
   $(if $(_pkgs_test),\
-    $(eval override _pkg_trigger-$(ENV)-tests := $(BUILD_DIR)/.packages_ver-tests)\
+    $(eval override _pkg_trigger_$(ENV)-tests := $(BUILD_DIR)/.packages_ver-tests)\
     $(eval $(call _rebuild_check,$(BUILD_DIR)/.packages_ver-tests,$(call _gen_pkg_ver_list,$(_pkgs) $(_pkgs_test)))))
 
   $(foreach x,$(_src_labels),$(if $(_$x_make_pkg_trigger),\
-    $(eval override _pkg_trigger-$(ENV)-$x := $(BUILD_DIR)/$(_$x_pkg_trigger))\
+    $(eval override _pkg_trigger_$(ENV)-$x := $(BUILD_DIR)/$(_$x_pkg_trigger))\
     $(eval $(call _rebuild_check,$(BUILD_DIR)/$(_$x_pkg_trigger),$(call _gen_pkg_ver_list,$(_$x_xpkgs))))))
 
   # make .o/.mk files for each build path
