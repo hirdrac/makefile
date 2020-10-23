@@ -3,8 +3,7 @@ Single-file makefile include that allows defining C++ makefiles with simple vari
 Can be used for building binaries, shared/static libraries, and unit tests (auto-execute when building).
 See Makefile.mk comments for variable parameters and standard targets.
 
-
-## Feature summary
+## Feature Summary
 * Can define up to 99 binaries, 99 libraries, and 999 unit tests in the same makefile
 * Built object files are placed together in a build directory
 * Dependency files are automatically generated to insure re-compilation for source changes is handled correctly
@@ -18,8 +17,17 @@ See Makefile.mk comments for variable parameters and standard targets.
 * Simple configure option to allow building with various 3rd party libraries (run 'pkg-config --list-all' to see what packages your system supports)
 * Default options for all compiler flags (warnings, optimizations, etc.) are provided.  These default values can either be overridden or extended by config options (See Makefile.mk for all config settings)
 
+## Requirements
+* GNU make 4.2 or newer
+* gcc or clang compiler
 
-## Makefile usage example
+## Supported Platforms
+* Linux (developed on Fedora Linux)
+* Cygwin/MinGW/Msys2 on Windows
+
+Other unix-like platforms may work as well but are untested.
+
+## Makefile Usage Example
 <pre>
 # Simple binary builds
 BIN1 = example1
