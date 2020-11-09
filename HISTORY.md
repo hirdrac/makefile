@@ -1,9 +1,20 @@
 # Version release history
 
+## 1.16 - general release (2020/11/3)
+NEW FEATURES:
+* Added OS specific settings (<WINDOWS/LINUX>.<SETTING>).  Example:
+   * WINDOWS.BIN1.LIBS = -lgdi32 (On Windows, this setting will replace BIN1.LIBS setting value)
+
+CHANGES:
+* Added warning messages for when compiler/package/command line cache file changes trigger rebuilding.
+
+FIXES:
+* Fixed unnecessary creation of compiler command line cache files for unused source types.  Also disabled creation of compiler version cache file if there are no source file targets.
+
 ## 1.15 - general release (2020/10/16)
 NEW FEATURES:
 * 'SOURCE_DIR' can now set for specific targets.  If set, target will build in isolation.
-* Added 'pedantic' option to enforce ISO C/C++ complience (adds -Wpedantic -pedantic-errors compile flags).
+* Added 'pedantic' option to enforce ISO C/C++ compliance (adds -Wpedantic -pedantic-errors compile flags).
 * Added error checking for using $(DEPS) in a file command definition but FILE<X>.DEPS isn't defined.
 
 CHANGES:
@@ -31,8 +42,8 @@ FIXES:
 NEW FEATURES:
 * FILE_<id>, TEST_<id> now available as file/test labels.
 * Added new options:
-   * static_rtlib: staticly link with libgcc
-   * static_stdlib: staticly link with libstdc++
+   * static_rtlib: statically link with libgcc
+   * static_stdlib: statically link with libstdc++
 * Added new global/target config option 'LINK_FLAGS' - allows additional flags for link command.
 * Added 'c++20','gnu++20' to supported STANDARD values.
 

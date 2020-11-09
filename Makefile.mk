@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.15 (2020/10/16)
+# Makefile.mk - version 1.16 (2020/11/3)
 # Copyright (C) 2020 Richard Bradley
 #
 # Additional contributions from:
@@ -106,6 +106,9 @@
 #  LINK_FLAGS      additional linking flags not otherwise specified
 #  *_EXTRA         available for most settings to provide additional values
 #
+#  <OS>.<VAR>      set OS specific value for any setting - overrides non-OS
+#                    specific value.  WINDOWS,LINUX supported
+#
 #  CXXFLAGS/CFLAGS/ASFLAGS/LDFLAGS
 #    can be used to override settings generated compile/link flags
 #    (globally or for specific targets)
@@ -211,6 +214,22 @@ $(foreach x,WARN WARN_C PACKAGES PACKAGES_TEST INCLUDE LIBS LIBS_TEST DEFINE OPT
   $(if $($x_EXTRA),$(eval override $x += $($x_EXTRA))))
 
 
+#### OS Specific Values ####
+override _uname := $(shell uname -s | tr A-Z a-z)
+override _windows := $(filter cygwin% mingw% msys%,$(_uname))
+override _linux := $(filter linux%,$(_uname))
+override _pic_flag := $(if $(_windows),,-fPIC)
+override _libprefix := $(if $(filter cygwin%,$(_uname)),cyg,$(if $(filter msys%,$(_uname)),msys-,lib))
+override _libext := .$(if $(_windows),dll,so)
+ifneq ($(_windows),)
+  $(foreach x,$(filter WINDOWS.%,$(.VARIABLES)),\
+    $(eval override $(patsubst WINDOWS.%,%,$x) = $(value $x)))
+else ifneq ($(_linux),)
+  $(foreach x,$(filter LINUX.%,$(.VARIABLES)),\
+    $(eval override $(patsubst LINUX.%,%,$x) = $(value $x)))
+endif
+
+
 #### Environment Details ####
 override _env_names := release debug profile
 override _opt_lvl = $(or $(strip $($1.OPT_LEVEL)),$(strip $(OPT_LEVEL)))
@@ -225,14 +244,6 @@ override _debug_op = -g $(if $(_debug_opt_lvl),-O$(_debug_opt_lvl))
 override _profile_uc := PROFILE
 override _profile_sfx := -pg
 override _profile_op = -pg $(if $(_opt_lvl),-O$(_opt_lvl))
-
-
-#### OS Specific Values ####
-override _uname := $(shell uname -s | tr A-Z a-z)
-override _windows := $(filter cygwin% mingw% msys%,$(_uname))
-override _pic_flag := $(if $(_windows),,-fPIC)
-override _libprefix := $(if $(filter cygwin%,$(_uname)),cyg,$(if $(filter msys%,$(_uname)),msys-,lib))
-override _libext := .$(if $(_windows),dll,so)
 
 
 #### Compiler Details ####
@@ -440,8 +451,8 @@ override _test_labels1 := $(filter $(sort $(foreach x,$(filter TEST%,$(.VARIABLE
 override _test_labels2 := $(sort $(foreach x,$(filter TEST_%,$(.VARIABLES)),$(if $(findstring .,$x),$(word 1,$(subst ., ,$x)))))
 override _test_labels := $(strip $(_test_labels1) $(_test_labels2))
 
-override _src_labels := $(_lib_labels) $(_bin_labels) $(_test_labels)
-override _all_labels := $(_src_labels) $(_file_labels)
+override _src_labels := $(strip $(_lib_labels) $(_bin_labels) $(_test_labels))
+override _all_labels := $(strip $(_src_labels) $(_file_labels))
 override _subdir_targets := $(foreach e,$(_env_names),$e tests_$e clean_$e) clobber install install-strip
 override _base_targets := all tests info help clean $(_subdir_targets)
 
@@ -838,8 +849,6 @@ else ifneq ($(_build_env),)
   # - <label>.DEPS can cause an isolated build even though there are no compile
   #   flag changes (target 'source.o : | dep' rules would affect other builds
   #   without isolation)
-  # - .SRC wildcard support doesn't work for wildcards in directory names, only
-  #   file names
 
   $(foreach x,$(_test_labels),\
     $(eval override _$x_aliases := $x$(SFX))\
@@ -964,6 +973,9 @@ endif
 #### Build Macros ####
 override define _rebuild_check  # <1:trigger file> <2:trigger text>
 ifneq ($$(strip $$(file <$1)),$$(strip $2))
+  ifneq ($$(file <$1),)
+    $$(info $$(_msgWarn)$1 changed$$(_end))
+  endif
   $$(if $$(strip $$(filter-out ./,$$(dir $1))),$$(shell mkdir -p "$$(dir $1)"))
   $$(file >$1,$2)
 endif
@@ -971,6 +983,9 @@ endef
 
 override define _rebuild_check_var # <1:trigger file> <2:trigger text var>
 ifneq ($$(strip $$(file <$1)),$$(strip $$($2)))
+  ifneq ($$(file <$1),)
+    $$(info $$(_msgWarn)$1 changed$$(_end))
+  endif
   $$(if $$(strip $$(filter-out ./,$$(dir $1))),$$(shell mkdir -p "$$(dir $1)"))
   $$(file >$1,$$(value $2))
 endif
@@ -1093,26 +1108,33 @@ $1/$(call _src_bname,$3).o: $$(_src_path_$2)$3 $1/$4 $$(BUILD_DIR)/.compiler_ver
 -include $1/$(call _src_bname,$3).mk
 endef
 
+
 override define _make_obj  # <1:path> <2:build> <3:flags> <4:src list>
 ifneq ($4,)
 $1/%.mk: ; @$$(RM) "$$(@:.mk=.o)"
 
+ifneq ($$(filter $$(_c_ptrn),$4),)
 $$(eval $$(call _rebuild_check,$1/.compile_cmd_c,$$(CC) $$(_cflags_$2) $3))
 $(addprefix $1/,$(addsuffix .o,$(call _src_bname,$(filter $(_c_ptrn),$4)))):
 	$$(strip $$(CC) $$(_cflags_$2) $3) -MMD -MP -MT '$$@' -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_c_ptrn),$4),\
   $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd_c)))
+endif
 
+ifneq ($$(filter $$(_asm_ptrn),$4),)
 $$(eval $$(call _rebuild_check,$1/.compile_cmd_s,$$(AS) $$(_asflags_$2) $3))
 $(addprefix $1/,$(addsuffix .o,$(call _src_bname,$(filter $(_asm_ptrn),$4)))):
 	$$(strip $$(AS) $$(_asflags_$2) $3) -MMD -MP -MT '$$@' -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_asm_ptrn),$4),\
   $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd_s)))
+endif
 
+ifneq ($$(filter $$(_cxx_ptrn),$4),)
 $$(eval $$(call _rebuild_check,$1/.compile_cmd,$$(CXX) $$(_cxxflags_$2) $3))
 $1/%.o: ; $$(strip $$(CXX) $$(_cxxflags_$2) $3) -MMD -MP -MT '$$@' -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_cxx_ptrn),$4),\
   $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd)))
+endif
 endif
 endef
 
@@ -1122,9 +1144,6 @@ endef
 ifneq ($(_build_env),)
   # symlink creation rule
   $(foreach x,$(_symlinks),$(eval $x: ; @ln -s . "$x"))
-
-  # .compiler_ver rule (rebuild trigger for compiler version change)
-  $(eval $(call _rebuild_check,$(BUILD_DIR)/.compiler_ver,$(shell $(CC) --version | head -1)))
 
   # .packages_ver rules (rebuild triggers for package version changes)
   $(if $(_pkgs),\
@@ -1139,6 +1158,10 @@ ifneq ($(_build_env),)
     $(eval override _pkg_trigger_$(ENV)-$x := $(BUILD_DIR)/$(_$x_pkg_trigger))\
     $(eval $(call _rebuild_check,$(BUILD_DIR)/$(_$x_pkg_trigger),$(call _gen_pkg_ver_list,$(_$x_xpkgs))))))
 
+  ifneq ($(_src_labels),)
+  # .compiler_ver rule (rebuild trigger for compiler version change)
+  $(eval $(call _rebuild_check,$(BUILD_DIR)/.compiler_ver,$(shell $(CC) --version | head -1)))
+
   # make .o/.mk files for each build path
   # NOTES:
   # - don't put 'call' args on separate lines, this can add spaces to values
@@ -1151,6 +1174,7 @@ ifneq ($(_build_env),)
   $(if $(_pic_flag),\
     $(foreach b,$(sort $(foreach x,$(_shared_lib_labels),$(_$x_build))),\
       $(eval $(call _make_obj,$$(BUILD_DIR)/$b-pic,$b,$(_pic_flag),$(sort $(foreach x,$(_shared_lib_labels),$(if $(filter $(_$x_build),$b),$(_$x_src))))))))
+  endif
 
   # make binary/library/test build targets
   $(foreach x,$(_static_lib_labels),$(eval $(call _make_static_lib,$x)))
