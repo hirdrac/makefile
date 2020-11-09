@@ -2,8 +2,8 @@
 
 ## 1.16 - general release (2020/11/3)
 NEW FEATURES:
-* Added OS specific settings (<WINDOWS/LINUX>.<SETTING>).  Example:
-   * WINDOWS.BIN1.LIBS = -lgdi32 (On Windows, this setting will replace BIN1.LIBS setting value)
+* Added OS specific settings (&lt;WINDOWS/LINUX&gt;.&lt;SETTING&gt;).  Example:
+   * WINDOWS.BIN1.LIBS = -lgdi32<br>(On Windows, this setting will replace BIN1.LIBS setting value)
 
 CHANGES:
 * Added warning messages for when compiler/package/command line cache file changes trigger rebuilding.
