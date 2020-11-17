@@ -1,5 +1,9 @@
 # Version release history
 
+## 1.16.1 - bug fix release (2020/11/17)
+FIXES:
+* fixed file entries without FILE&lt;X&gt;.DEPS setting always triggering 'Cannot use DEPS if FILE&lt;X&gt;.DEPS is not set' error
+
 ## 1.16 - general release (2020/11/3)
 NEW FEATURES:
 * Added OS specific settings (&lt;WINDOWS/LINUX&gt;.&lt;SETTING&gt;).  Example:
@@ -183,7 +187,7 @@ CHANGES:
 * INCLUDE global setting no longer has a default value (was -I.) - if this breaks builds then add '.' to your current INCLUDE setting.
 * CXXFLAGS/CFLAGS/ASFLAGS/LDFLAGS global settings can now be set in the Makefile without using 'override' (settings not recommended for use since they will override all other settings that generate compiler flags).
 
-BUG FIXES:
+FIXES:
 * When linking binaries/shared libraries/tests, 'LIBS' libraries are linked before 'PACKAGES' libraries.  This resolves a linking error when linking with static libraries (via the 'LIBS' setting) that require specific packages in the final binary target.
 * Spelling fixes to various error messages.
 
@@ -215,7 +219,7 @@ NEW FEATURES:
 * Made static library (archive) building less verbose.
 * Added support for source files with '../' in their path.
 
-BUG FIXES:
+FIXES:
 * TESTx-g, TESTx-pg targets now correctly run test binaries even if already built like TESTx targets do.
 * Fixed object file rebuild trigger failures on Makefile config change.
 * Fixed incorrect object file name in dependency file (dependency checks for header changes weren't working because of this).
@@ -246,7 +250,7 @@ BUG FIXES:
    * red - test failed
 * unit tests are forced to build/execute after binary builds<br>(previously they were only forced to run after library builds like binaries)
 
-## 1.1.1 - minor bug fix release (2019/8/1)
+## 1.1.1 - bug fix release (2019/8/1)
 * fixed issues with building both shared & static version of a library
 
 ## 1.1 - feature release (2019/7/7)

@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.16 (2020/11/3)
+# Makefile.mk - version 1.16.1 (2020/11/17)
 # Copyright (C) 2020 Richard Bradley
 #
 # Additional contributions from:
@@ -877,10 +877,10 @@ else ifneq ($(_build_env),)
 
   # file entry command evaluation
   $(foreach x,$(_file_labels),\
-    $(eval override OUT := $($x))\
-    $(eval override DEPS := $(or $($x.DEPS),$$(error $$(_msgErr)Cannot use DEPS if $x.DEPS is not set$$(_end))))\
+    $(eval override OUT = $($x))\
+    $(eval override DEPS = $(or $($x.DEPS),$$(error $$(_msgErr)Cannot use DEPS if $x.DEPS is not set$$(_end))))\
     $(foreach n,$(wordlist 1,$(words $($x.DEPS)),$(_1-99)),\
-      $(eval override DEP$n := $(word $n,$($x.DEPS))))\
+      $(eval override DEP$n = $(word $n,$($x.DEPS))))\
     $(eval override _$x_command := $(value $x.CMD)))
 
   # binaries depend on lib goals to make sure libs are built first
