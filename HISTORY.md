@@ -1,5 +1,9 @@
 # Version release history
 
+## 1.17 - general release (2020/12/27)
+CHANGES:
+* Removed CXXFLAGS/CFLAGS/ASFLAGS/LDFLAGS usage (global & target specific).  Setting these variables caused other settings to be ignored in unpredictable ways, especially if the variables were set by the environment.
+
 ## 1.16.1 - bug fix release (2020/11/17)
 FIXES:
 * fixed file entries without FILE&lt;X&gt;.DEPS setting always triggering 'Cannot use DEPS if FILE&lt;X&gt;.DEPS is not set' error
