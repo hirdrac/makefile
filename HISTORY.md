@@ -1,5 +1,22 @@
 # Version release history
 
+## 1.18 - general release (2021/5/29)
+NEW FEATURES:
+* Added support for '**' wildcard in <X>.SRC/<X>.OBJ/<X>.DEPS settings that does a directory tree search for all matching files (same behavior as 'find' shell command).<br>
+  Example:<br>
+    BIN1.SRC = src/**.cc<br>
+      (adds all files that match *.cc in src/ and all subdirectories of src/)
+* Added 'c++2b','gnu++2b','c++23','gnu++23' to supported STANDARD values.
+* New make target '.gitignore' will print a sample .gitignore config file that can be used for your project.
+
+CHANGES:
+* Added '--gc-sections' linking flag to (slightly) reduce binary sizes. (-ffunction-sections/-fdata-sections not added to compile flags for now)
+* Added 'missing-include-dirs' to default C/C++ warnings.
+* Binary target names now automatically include '.exe' extension for Windows builds (was previously just relying on MinGW/Cygwin to add the extension).
+* Binary labels (ex: BIN1) are now allowed for all <X>.DEPS settings (built binary name is subsituted.)
+* $(DEP1),$(DEP2),$(DEPS) output vars for FILE<X>.CMD definition now uses FILE<X>.DEPS setting after wildcards & BIN labels are evaluated.
+* Added error checking for binary names to prevent .exe extension from being specified.
+
 ## 1.17 - general release (2020/12/27)
 CHANGES:
 * Removed CXXFLAGS/CFLAGS/ASFLAGS/LDFLAGS usage (global & target specific).  Setting these variables caused other settings to be ignored in unpredictable ways, especially if the variables were set by the environment.

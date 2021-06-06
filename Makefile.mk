@@ -1,6 +1,6 @@
 #
-# Makefile.mk - version 1.17 (2020/12/27)
-# Copyright (C) 2020 Richard Bradley
+# Makefile.mk - version 1.18 (2021/6/4)
+# Copyright (C) 2021 Richard Bradley
 #
 # Additional contributions from:
 #   Stafford Horne (github:stffrdhrn)
@@ -38,6 +38,7 @@
 #  clobber         deletes build directory & built binaries/libraries/files
 #  tests           run all tests for DEFAULT_ENV
 #  info            prints summary of defined build targets
+#  .gitignore      prints a sample .gitignore file for all targets
 #  help            prints command summary
 #
 # Makefile Parameters:
@@ -125,13 +126,20 @@
 #    to override global values (ex.: BIN1.FLAGS = -pthread).
 #    A value of '-' can be used to clear the setting for the target
 #
-#  Filename wildcard '*' supported for .SRC,.DEPS,.OBJS settings
+#  Filename wildcards '*' or '**'(directory hierarchy search) supported
+#    for .SRC,.DEPS,.OBJS settings
 #
 #  <X>.LIBS/<X>.OBJS can accept LIB labels of library targets. Library
 #    LIBS/PACKAGES/binary will automatically be used in target building.
 #    LIBS will perfer shared library for linking if available, OBJS will only
 #    allow linking with static libraries.
-#    (ex.: BIN1.LIBS = LIB1)
+#    ex.: BIN1.LIBS = LIB1
+#
+#  <X>.DEPS can accept BIN labels of binary targets.  This can be used to make
+#    sure a binary is built before a file target command (that requires the
+#    binary) is executed.
+#    ex.: FILE1.DEPS = BIN1 data_file.txt
+#         FILE1.CMD = ./$(DEP1) $(DEP2)
 #
 # Output Variables:
 #  ENV             current build environment
@@ -168,8 +176,9 @@ STANDARD ?=
 OPT_LEVEL ?= 3
 OPT_LEVEL_DEBUG ?= g
 ifndef WARN
-  WARN = all extra no-unused-parameter non-virtual-dtor overloaded-virtual $(_$(COMPILER)_warn)
-  WARN_C ?= all extra no-unused-parameter write-strings $(_$(COMPILER)_warn)
+  override _common_warn := all extra missing-include-dirs no-unused-parameter
+  WARN = $(_common_warn) non-virtual-dtor overloaded-virtual $(_$(COMPILER)_warn)
+  WARN_C ?= $(_common_warn) write-strings $(_$(COMPILER)_warn)
 else
   WARN_C ?= $(WARN)
 endif
@@ -216,6 +225,7 @@ override _linux := $(filter linux%,$(_uname))
 override _pic_flag := $(if $(_windows),,-fPIC)
 override _libprefix := $(if $(filter cygwin%,$(_uname)),cyg,$(if $(filter msys%,$(_uname)),msys-,lib))
 override _libext := .$(if $(_windows),dll,so)
+override _binext := $(if $(_windows),.exe)
 ifneq ($(_windows),)
   $(foreach x,$(filter WINDOWS.%,$(.VARIABLES)),\
     $(eval override $(patsubst WINDOWS.%,%,$x) = $(value $x)))
@@ -303,7 +313,7 @@ override _c_ptrn := %.c
 override _c_stds := c90 gnu90 c99 gnu99 c11 gnu11 c17 gnu17 c18 gnu18 c2x gnu2x
 override _asm_ptrn := %.s %.S %.sx
 override _cxx_ptrn := %.cc %.cp %.cxx %.cpp %.CPP %.c++ %.C
-override _cxx_stds := c++98 gnu++98 c++03 gnu++03 c++11 gnu++11 c++14 gnu++14 c++17 gnu++17 c++2a gnu++2a c++20 gnu++20
+override _cxx_stds := c++98 gnu++98 c++03 gnu++03 c++11 gnu++11 c++14 gnu++14 c++17 gnu++17 c++2a gnu++2a c++20 gnu++20 c++2b gnu++2b c++23 gnu++23
 
 override define _check_standard  # <1:standard var> <2:set prefix>
 override $2_cxx_std := $$(addprefix -std=,$$(filter $$($1),$$(_cxx_stds)))
@@ -451,7 +461,7 @@ override _test_labels := $(strip $(_test_labels1) $(_test_labels2))
 override _src_labels := $(strip $(_lib_labels) $(_bin_labels) $(_test_labels))
 override _all_labels := $(strip $(_src_labels) $(_file_labels))
 override _subdir_targets := $(foreach e,$(_env_names),$e tests_$e clean_$e) clobber install install-strip
-override _base_targets := all tests info help clean $(_subdir_targets)
+override _base_targets := all tests info help .gitignore clean $(_subdir_targets)
 
 # strip extra spaces from all names
 $(foreach x,$(_all_labels),$(if $($x),$(eval override $x = $(strip $(value $x)))))
@@ -479,6 +489,9 @@ override _test_ptrn := %.ARGS $(_bin_ptrn)
 override define _check_bin_entry  # <1:bin label>
 $$(foreach x,$$(filter-out $$(_bin_ptrn),$$(filter $1.%,$$(.VARIABLES))),\
   $$(warning $$(_msgWarn)Unknown binary parameter '$$x'$$(_end)))
+ifneq ($$(filter %.exe,$$($1)),)
+  $$(error $$(_msgErr)$1: binary name should not be specified with an extension$$(_end))
+endif
 endef
 $(foreach x,$(_bin_labels),$(eval $(call _check_bin_entry,$x)))
 
@@ -487,7 +500,7 @@ override define _check_lib_entry  # <1:lib label>
 $$(foreach x,$$(filter-out $$(_lib_ptrn),$$(filter $1.%,$$(.VARIABLES))),\
   $$(warning $$(_msgWarn)Unknown library parameter '$$x'$$(_end)))
 ifneq ($$(filter %.a %.so %.dll,$$($1)),)
-  $$(error $$(_msgErr)$1: library names should not be specified with an extension$$(_end))
+  $$(error $$(_msgErr)$1: library name should not be specified with an extension$$(_end))
 else ifneq ($$(filter-out static shared,$$($1.TYPE)),)
   $$(error $$(_msgErr)$1.TYPE: only 'static' and/or 'shared' allowed$$(_end))
 endif
@@ -550,8 +563,8 @@ override _src_path := $(if $(SOURCE_DIR),$(filter-out ./,$(SOURCE_DIR:%/=%)/))
 override _symlinks := $(addprefix $(_src_path),$(SYMLINKS))
 
 # output target name generation macros - <1:build env> <2:label>
-override _gen_bin_name = $(_$1_bdir)$($2)$(_$1_bsfx)
-override _gen_bin_aliases = $(if $(_$1_bdir),$($2)$(_$1_sfx))
+override _gen_bin_name = $(_$1_bdir)$($2)$(_$1_bsfx)$(_binext)
+override _gen_bin_aliases = $(if $(_$1_bdir),$($2)$(_$1_sfx)) $(if $(_binext),$(_$1_bdir)$($2)$(_$1_bsfx))
 override _gen_static_lib_name = $(_$1_ldir)$($2)$(_$1_lsfx).a
 override _gen_static_lib_aliases = $($2)$(_$1_sfx) $(if $(_$1_ldir),$($2)$(_$1_sfx).a)
 override _gen_implib_name = $(_$1_ldir)$($2)$(_$1_lsfx).dll.a
@@ -629,6 +642,11 @@ override _format_target_libs = $(foreach x,$1,\
 $(if $(filter $x,$(_lib_labels)),$(or $(call _format_lib_name,$(_$x_shared_name)),$(_$x_name)),\
 $(call _format_lib_arg,$x)))
 
+# _do_wildcard: <1:file> <2:basedir>
+override _do_wildcard = $(if $(findstring **,$(notdir $1)),\
+$(patsubst $(or $2,./)%,%,$(shell find $2$(filter-out ./,$(dir $1)) -name '$(notdir $1)')),\
+$(if $(findstring *,$1),$(patsubst $2%,%,$(wildcard $2$1)),$1))
+
 # build environment detection
 override _build_env := $(strip $(foreach e,$(_env_names),$(if $(_$e_goals),$e)))
 ifeq ($(filter 0 1,$(words $(_build_env))),)
@@ -699,9 +717,9 @@ else ifneq ($(_build_env),)
   $(if $(_windows),$(foreach x,$(_shared_lib_labels),\
     $(eval override _$x_implib := $(call _gen_implib_name,$(ENV),$x))))
 
-  # .DEPS wildcard translation
-  $(foreach x,$(_all_labels),\
-    $(eval override _$x_deps := $(foreach d,$($x.DEPS),$(if $(findstring *,$d),$(wildcard $d),$d))))
+  # .DEPS wildcard & BIN label translation
+  $(foreach x,$(_all_labels),$(eval override _$x_deps := $(foreach d,$($x.DEPS),\
+    $(if $(filter $d,$(_bin_labels)),$(call _gen_bin_name,$(ENV),$d),$(call _do_wildcard,$d,)))))
 
   ## general entry setting parsing (pre)
   override define _build_entry1  # <1:label>
@@ -711,7 +729,7 @@ else ifneq ($(_build_env),)
     override _src_path_$$(ENV)-$1 := $$(or $$(_$1_source_dir),$$(_src_path))
   endif
 
-  override _$1_src := $$(foreach x,$$($1.SRC),$$(if $$(findstring *,$$x),$$(patsubst $$(_src_path_$$(ENV)-$1)%,%,$$(wildcard $$(_src_path_$$(ENV)-$1)$$x)),$$x))
+  override _$1_src := $$(strip $$(foreach x,$$($1.SRC),$$(call _do_wildcard,$$x,$$(_src_path_$$(ENV)-$1))))
   ifeq ($$(strip $$($1.SRC)),)
     $$(error $$(_msgErr)$1.SRC: no source files specified$$(_end))
   else ifeq ($$(strip $$(_$1_src)),)
@@ -726,9 +744,8 @@ else ifneq ($(_build_env),)
   override _$1_src_objs := $$(addsuffix .o,$$(call _src_bname,$$(_$1_src)))
 
   ifneq ($$(strip $$($1.OBJS)),-)
-    override _$1_other_objs := $$(foreach x,$$($1.OBJS),\
-      $$(if $$(findstring *,$$x),$$(wildcard $$x),\
-        $$(if $$(filter $$x,$$(_lib_labels)),$$(or $$(_$$x_name),$$(error $$(_msgErr)$1.OBJS: static type required for library '$$x'$$(_end))),$$x)))
+    override _$1_other_objs := $$(foreach x,$$($1.OBJS),$$(if $$(filter $$x,$$(_lib_labels)),\
+      $$(or $$(_$$x_name),$$(error $$(_msgErr)$1.OBJS: static type required for library '$$x'$$(_end))),$$(call _do_wildcard,$$x,)))
   endif
 
   ifneq ($$(strip $$($1.SUBSYSTEM)),-)
@@ -861,7 +878,7 @@ else ifneq ($(_build_env),)
   # determine LDFLAGS value for each entry
   $(foreach x,$(_shared_lib_labels) $(_bin_labels) $(_test_labels),\
     $(eval override _$x_ldflags :=\
-      -Wl$(_comma)--as-needed -L$(or $(_$(ENV)_ldir),.)\
+      -Wl$(_comma)--as-needed$(_comma)--gc-sections -L$(or $(_$(ENV)_ldir),.)\
       $(if $(_$x_soname),-Wl$(_comma)-h$(_comma)'$(_$x_soname)')\
       $(if $(_$x_implib),-Wl$(_comma)--out-implib$(_comma)'$(_$x_implib)')\
       $(if $(_$x_subsystem),-Wl$(_comma)$--subsystem$(_comma)$(_$x_subsystem))\
@@ -871,9 +888,9 @@ else ifneq ($(_build_env),)
   # file entry command evaluation
   $(foreach x,$(_file_labels),\
     $(eval override OUT = $($x))\
-    $(eval override DEPS = $(or $($x.DEPS),$$(error $$(_msgErr)Cannot use DEPS if $x.DEPS is not set$$(_end))))\
-    $(foreach n,$(wordlist 1,$(words $($x.DEPS)),$(_1-99)),\
-      $(eval override DEP$n = $(word $n,$($x.DEPS))))\
+    $(eval override DEPS = $(or $(_$x_deps),$$(error $$(_msgErr)Cannot use DEPS if $x.DEPS is not set$$(_end))))\
+    $(foreach n,$(wordlist 1,$(words $(_$x_deps)),$(_1-99)),\
+      $(eval override DEP$n = $(word $n,$(_$x_deps))))\
     $(eval override _$x_command := $(value $x.CMD)))
 
   # binaries depend on lib goals to make sure libs are built first
@@ -914,8 +931,14 @@ help:
 	@echo '$(_bold)make clobber$(_end)       as clean, but also removes made binaries/libraries'
 	@echo '$(_bold)make tests$(_end)         builds/runs all tests'
 	@echo '$(_bold)make info$(_end)          prints build target summary'
+	@echo '$(_bold)make .gitignore$(_end)    prints a sample .gitignore file for all targets'
 	@echo '$(_bold)make help$(_end)          prints this information'
 	@echo
+
+.gitignore:
+	@echo '$(BUILD_DIR)/'
+	@for X in $(sort $(filter-out $(BUILD_DIR)/%,$(foreach e,$(_env_names),$(_$e_libbin_targets) $(_$e_file_targets)))); do\
+	  echo "$$X"; done
 
 override define _setup_env_targets  # <1:build env>
 $1: $$(_$1_build_targets)
