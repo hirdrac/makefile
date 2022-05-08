@@ -1,29 +1,37 @@
 # Example Makefile
 # (actual examples commented out to avoid errors)
 
-### EXAMPLE 1 - simple binary build ###
-### makes executable 'binary1' in makefile directory
+### EXAMPLE 1 - simple binary build
+### builds 'binary1' in makefile directory from specified source files
 #BIN1 = binary1
 #BIN1.SRC = binary1.cc other.cpp subdir/more_src.C
 
-### EXAMPLE 2 - static & shared library build ###
-### makes static library 'libtest.a' and shared library 'libtest.so'
+### EXAMPLE 2 - single line to name & build a binary from all C++ source
+###   in directory (excluding sub-directories)
+#BIN_binary2.SRC = *.cpp
+
+### EXAMPLE 3 - build a binary with all C source from a specified directory
+###   with a recursive search of all sub-directories in that directory.
+###   second line defines symbols for only this target
+#BIN_prog3.SRC = Source/**.c
+#BIN_prog3.DEFINE = TESTBUILD PATH="/usr/local/"
+
+### EXAMPLE 4 - static & shared library build
+###   makes static library 'libtest.a' and shared library 'libtest.so'
 #LIB1 = libtest
 #LIB1.SRC = libSource.cc
 #LIB1.TYPE = static shared
 
-### EXAMPLE 3 - unit test that automatically builds/runs if any other
-### target is (re)built
-### (tests can be manually built/run with 'make tests' command
-#TEST1 = mytest
+### EXAMPLE 5 - unit test that automatically runs after building
+###   (tests can be forced to run w/ 'make tests')
+#TEST1 = optional test description
 #TEST1.SRC = mytest.cc other.cpp
 
 ### Settings to use for all binary/library/test builds
-### (per binary/library settings not currently available)
 # set compiler to clang (defaults to gcc)
 #COMPILER = clang
 #
-# add additional flags to be used for compiling/linking
+# add additional flags to be used for compiling/linking all targets
 #FLAGS = -flto -pthread
 #
 # set packages to use for all targets, as defined by pkg-config
@@ -31,8 +39,12 @@
 # libraries used are linked with each binary)
 #PACKAGES = freetype2
 #
-# override default optimization values with different settings
-#OPTIMIZE = -O2 -march=native
+# override default optimization level
+#OPT_LEVEL = 2
+#
+# disable assert() for all targets
+# (-D prepended to all DEFINE values automatically if not specified)
+#DEFINE = NDEBUG
 
 
 ### See comments at the top of 'Makefile.mk' for descriptions of other
