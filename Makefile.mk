@@ -1,6 +1,6 @@
 #
-# Makefile.mk - version 1.18 (2021/6/4)
-# Copyright (C) 2021 Richard Bradley
+# Makefile.mk - version 1.19 (2022/5/19)
+# Copyright (C) 2022 Richard Bradley
 #
 # Additional contributions from:
 #   Stafford Horne (github:stffrdhrn)
@@ -82,12 +82,13 @@
 #  OPT_LEVEL_DEBUG optimization level for debug builds
 #  SUBSYSTEM       subsystem value for Windows binary builds
 #  WARN            C/C++ compile warning flags (-W optional)
-#  WARN_C          C specific warnings (WARN setting used for C code if unset)
+#  WARN_C          C specific warnings (defaults to WARN or C specific list)
+#  WARN_CXX        C++ specific warnings (defaults to WARN or C++ specific list)
 #  PACKAGES        list of packages for pkg-config
 #  PACKAGES_TEST   additional packages for all tests
 #  INCLUDE         includes needed not covered by pkg-config (-I optional)
 #  LIBS            libraries needed not covered by pkg-config (-l optional)
-#  LIBS_TEST       additional libs to link with for all tests (-l optional)
+#  LIBS_TEST       additional libs for all tests (-l optional)
 #  DEFINE          defines for compilation (-D optional)
 #  OPTIONS         list of options to enable - use instead of specific flags
 #    warn_error    make all compiler warnings into errors
@@ -177,10 +178,11 @@ OPT_LEVEL ?= 3
 OPT_LEVEL_DEBUG ?= g
 ifndef WARN
   override _common_warn := all extra missing-include-dirs no-unused-parameter
-  WARN = $(_common_warn) non-virtual-dtor overloaded-virtual $(_$(COMPILER)_warn)
-  WARN_C ?= $(_common_warn) write-strings $(_$(COMPILER)_warn)
+  WARN_C ?= $(_common_warn) write-strings $(_$(COMPILER)_warn) $(WARN_EXTRA)
+  WARN_CXX ?= $(_common_warn) non-virtual-dtor overloaded-virtual $(_$(COMPILER)_warn) $(WARN_EXTRA)
 else
-  WARN_C ?= $(WARN)
+  WARN_C ?= $(WARN) $(WARN_EXTRA)
+  WARN_CXX ?= $(WARN) $(WARN_EXTRA)
 endif
 PACKAGES ?=
 PACKAGES_TEST ?=
@@ -213,8 +215,8 @@ override SFX := SFX
 override BUILD_TMP := BUILD_TMP
 override LIBPREFIX := lib
 
-# apply *_EXTRA setting values
-$(foreach x,WARN WARN_C PACKAGES PACKAGES_TEST INCLUDE LIBS LIBS_TEST DEFINE OPTIONS FLAGS FLAGS_TEST FLAGS_RELEASE FLAGS_DEBUG FLAGS_PROFILE,\
+# apply *_EXTRA setting values (WARN_EXTRA handled above)
+$(foreach x,WARN_C WARN_CXX PACKAGES PACKAGES_TEST INCLUDE LIBS LIBS_TEST DEFINE OPTIONS FLAGS FLAGS_TEST FLAGS_RELEASE FLAGS_DEBUG FLAGS_PROFILE,\
   $(if $($x_EXTRA),$(eval override $x += $($x_EXTRA))))
 
 
@@ -258,15 +260,13 @@ override _gcc_cxx := g++
 override _gcc_cc := gcc
 override _gcc_as := gcc -x assembler-with-cpp
 override _gcc_ar := gcc-ar
-override _gcc_ranlib := gcc-ranlib
 override _gcc_warn := shadow=local
-override _gcc_modern := -Wzero-as-null-pointer-constant -Wregister -Wsuggest-override -Wsuggest-final-methods -Wsuggest-final-types
+override _gcc_modern := -Wzero-as-null-pointer-constant -Wregister -Wsuggest-override
 
 override _clang_cxx := clang++
 override _clang_cc := clang
 override _clang_as := clang -x assembler-with-cpp
 override _clang_ar := llvm-ar
-override _clang_ranlib := llvm-ranlib
 override _clang_warn := shadow
 override _clang_modern := -Wzero-as-null-pointer-constant -Wregister -Winconsistent-missing-override
 
@@ -307,7 +307,6 @@ CXX = $(CROSS_COMPILE)$(or $(_$(COMPILER)_cxx),c++)
 CC = $(CROSS_COMPILE)$(or $(_$(COMPILER)_cc),cc)
 AS = $(CROSS_COMPILE)$(or $(_$(COMPILER)_as),as)
 AR = $(CROSS_COMPILE)$(or $(_$(COMPILER)_ar),ar)
-RANLIB = $(CROSS_COMPILE)$(or $(_$(COMPILER)_ranlib),ranlib)
 
 override _c_ptrn := %.c
 override _c_stds := c90 gnu90 c99 gnu99 c11 gnu11 c17 gnu17 c18 gnu18 c2x gnu2x
@@ -664,24 +663,23 @@ else ifneq ($(_build_env),)
   $(eval $(call _check_options,OPTIONS,))
 
   override _pkgs := $(call _check_pkgs,PACKAGES)
-  override _pkg_flags := $(call _get_pkg_flags,$(_pkgs))
-
   override _pkgs_test := $(call _check_pkgs,PACKAGES_TEST)
-  override _test_pkg_flags := $(if $(_pkgs_test),$(call _get_pkg_flags,$(_pkgs) $(_pkgs_test)),$(_pkg_flags))
 
   override _define := $(call _format_define,$(DEFINE))
   override _include := $(call _format_include,$(INCLUDE))
-  override _warn := $(call _format_warn,$(WARN))
+  override _warn := $(call _format_warn,$(WARN_CXX))
   override _warn_c := $(call _format_warn,$(WARN_C))
 
   # setup compile flags for each build path
+  override _pkg_flags := $(call _get_pkg_flags,$(_pkgs))
   override _xflags :=  $(_pkg_flags) $(FLAGS) $(FLAGS_$(_$(ENV)_uc))
   override _cxxflags_$(ENV) := $(strip $(_cxx_std) $(_$(ENV)_op) $(_warn) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_xflags))
   override _cflags_$(ENV) := $(strip $(_c_std) $(_$(ENV)_op) $(_warn_c) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_xflags))
   override _asflags_$(ENV) := $(strip $(_$(ENV)_op) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_xflags))
   override _src_path_$(ENV) := $(_src_path)
 
-  ifneq ($(_pkg_flags),$(strip $(_test_pkg_flags) $(FLAGS_TEST)))
+  ifneq ($(_test_labels),)
+    override _test_pkg_flags := $(if $(_pkgs_test),$(call _get_pkg_flags,$(_pkgs) $(_pkgs_test)),$(_pkg_flags))
     override _test_xflags :=  $(_test_pkg_flags) $(FLAGS) $(FLAGS_$(_$(ENV)_uc)) $(FLAGS_TEST)
     override _cxxflags_$(ENV)-tests := $(strip $(_cxx_std) $(_$(ENV)_op) $(_warn) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_test_xflags))
     override _cflags_$(ENV)-tests := $(strip $(_c_std) $(_$(ENV)_op) $(_warn_c) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_test_xflags))
@@ -835,10 +833,10 @@ else ifneq ($(_build_env),)
   ifeq ($$(_src_path_$$(ENV)-$1),$$(_src_path))
     ifeq ($$(_$1_deps),)
       # if compile flags match then use a shared build path
-      ifeq ($$(_cxxflags_$$(ENV)-$1),$$(_cxxflags_$$(ENV)-test))
-        ifeq ($$(_cflags_$$(ENV)-$1),$$(_cflags_$$(ENV)-test))
-          ifeq ($$(_asflags_$$(ENV)-$1),$$(_asflags_$$(ENV)-test))
-            override _$1_build := $$(ENV)-test
+      ifeq ($$(_cxxflags_$$(ENV)-$1),$$(_cxxflags_$$(ENV)-tests))
+        ifeq ($$(_cflags_$$(ENV)-$1),$$(_cflags_$$(ENV)-tests))
+          ifeq ($$(_asflags_$$(ENV)-$1),$$(_asflags_$$(ENV)-tests))
+            override _$1_build := $$(ENV)-tests
           endif
         endif
       endif
@@ -1010,13 +1008,16 @@ endef
 # make path of input file - <1:file w/ path>
 override _make_path = $(if $(strip $(filter-out ./,$(dir $1))),@mkdir -p "$(dir $1)")
 
+# fix path to other objects when inside build dir
+override _fix_path = $(foreach x,$1,$(if $(filter /% ~%,$x),,../../)$x)
+
 # link binary/test/shared lib - <1:label>
 override _do_link = $(if $(filter cxx,$(_$1_lang)),$(CXX) $(_cxxflags_$(_$1_build)),$(CC) $(_cflags_$(_$1_build))) $(_$1_ldflags)
 
 # static library build
 override define _make_static_lib  # <1:label>
 override _$1_all_objs := $$(addprefix $$(BUILD_DIR)/$$(_$1_build)/,$$(_$1_src_objs))
-override _$1_link_cmd := $$(AR) rc '$$(_$1_name)' $$(strip $$(_$1_all_objs) $$(_$1_other_objs))
+override _$1_link_cmd := cd '$$(BUILD_DIR)/$$(_$1_build)'; $$(AR) rcs '../../$$(_$1_name)' $$(strip $$(_$1_src_objs) $$(call _fix_path,$$(_$1_other_objs)))
 override _$1_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1-static
 $$(eval $$(call _rebuild_check_var,$$$$(_$1_trigger),_$1_link_cmd))
 
@@ -1030,7 +1031,6 @@ $$(_$1_name): $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_trigger)
 	$$(call _make_path,$$@)
 	@-$$(RM) "$$@"
 	$$(_$1_link_cmd)
-	$$(RANLIB) '$$@'
 	@echo "$$(_msgInfo)Static library '$$@' built$$(_end)"
 endef
 
@@ -1147,7 +1147,8 @@ endif
 
 ifneq ($$(filter $$(_cxx_ptrn),$4),)
 $$(eval $$(call _rebuild_check,$1/.compile_cmd,$$(CXX) $$(_cxxflags_$2) $3))
-$1/%.o: ; $$(strip $$(CXX) $$(_cxxflags_$2) $3) -MMD -MP -MT '$$@' -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
+$(addprefix $1/,$(addsuffix .o,$(call _src_bname,$(filter $(_cxx_ptrn),$4)))):
+	$$(strip $$(CXX) $$(_cxxflags_$2) $3) -MMD -MP -MT '$$@' -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_cxx_ptrn),$4),\
   $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd)))
 endif

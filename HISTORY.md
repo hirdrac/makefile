@@ -1,5 +1,18 @@
 # Version release history
 
+## 1.19 - general release (2022/5/18)
+CHANGES:
+* Static library building improvements
+   * 'ranlib' step made part of 'ar' command in archive creation
+   * 'ar' command run in object file directory to simply arguments
+* warning setting improvements
+   * added 'WARN_CXX' setting to control warnings for C++ files without overriding C defaults
+   * changed 'WARN_EXTRA' to add warnings for both C & C++ files (WARN_C_EXTRA/WARN_CXX_EXTRA can be used for specific file types)
+
+FIXES:
+* removed suggest-final-methods/suggest-final-types warnings from 'modern_c++' option because of false warnings when link-time-optimization isn't enabled.
+* fixed logic to share build directory for tests
+
 ## 1.18 - general release (2021/5/29)
 NEW FEATURES:
 * Added support for '**' wildcard in <X>.SRC/<X>.OBJ/<X>.DEPS settings that does a directory tree search for all matching files (same behavior as 'find' shell command).<br>
