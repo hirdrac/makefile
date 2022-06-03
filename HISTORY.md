@@ -3,15 +3,15 @@
 ## 1.19 - general release (2022/5/18)
 CHANGES:
 * Static library building improvements
-   * 'ranlib' step made part of 'ar' command in archive creation
-   * 'ar' command run in object file directory to simply arguments
+   * 'ranlib' step made part of 'ar' command in archive creation.
+   * 'ar' command run in object file directory to simply arguments.
 * warning setting improvements
-   * added 'WARN_CXX' setting to control warnings for C++ files without overriding C defaults
-   * changed 'WARN_EXTRA' to add warnings for both C & C++ files (WARN_C_EXTRA/WARN_CXX_EXTRA can be used for specific file types)
+   * Added 'WARN_CXX' setting to control warnings for C++ files without overriding C defaults.
+   * Changed 'WARN_EXTRA' to add warnings for both C & C++ files (WARN_C_EXTRA/WARN_CXX_EXTRA can be used for specific file types).
 
 FIXES:
-* removed suggest-final-methods/suggest-final-types warnings from 'modern_c++' option because of false warnings when link-time-optimization isn't enabled.
-* fixed logic to share build directory for tests
+* Removed suggest-final-methods/suggest-final-types warnings from 'modern_c++' option because of false warnings when link-time-optimization isn't enabled.
+* Fixed logic to share build directory for tests.
 
 ## 1.18 - general release (2021/5/29)
 NEW FEATURES:
@@ -26,7 +26,7 @@ CHANGES:
 * Added '--gc-sections' linking flag to (slightly) reduce binary sizes. (-ffunction-sections/-fdata-sections not added to compile flags for now)
 * Added 'missing-include-dirs' to default C/C++ warnings.
 * Binary target names now automatically include '.exe' extension for Windows builds (was previously just relying on MinGW/Cygwin to add the extension).
-* Binary labels (ex: BIN1) are now allowed for all <X>.DEPS settings (built binary name is subsituted.)
+* Binary labels (ex: BIN1) are now allowed for all <X>.DEPS settings (built binary name is substituted.)
 * $(DEP1),$(DEP2),$(DEPS) output vars for FILE<X>.CMD definition now uses FILE<X>.DEPS setting after wildcards & BIN labels are evaluated.
 * Added error checking for binary names to prevent .exe extension from being specified.
 
@@ -36,7 +36,7 @@ CHANGES:
 
 ## 1.16.1 - bug fix release (2020/11/17)
 FIXES:
-* fixed file entries without FILE&lt;X&gt;.DEPS setting always triggering 'Cannot use DEPS if FILE&lt;X&gt;.DEPS is not set' error
+* Fixed file entries without FILE&lt;X&gt;.DEPS setting always triggering 'Cannot use DEPS if FILE&lt;X&gt;.DEPS is not set' error.
 
 ## 1.16 - general release (2020/11/3)
 NEW FEATURES:
@@ -169,7 +169,7 @@ CHANGES:
 * When VERSION is set for a shared library, the internal name of the library (DF_SONAME) is set to libname.so.&lt;MAJOR VERSION&gt;
 
 FIXES:
-* fixed creation of shared library links if a path is part of the library name (ex. LIB1 = lib/libname)
+* Fixed creation of shared library links if a path is part of the library name (ex. LIB1 = lib/libname).
 
 ## 1.8 - general release (2020/1/11)
 NEW FEATURES:
@@ -274,25 +274,25 @@ FIXES:
 * Target specific LIBS config (i.e. BIN1.LIBS) now overrides default 'LIBS' config instead of just adding additional libraries to link with (this behavior matches other target specific configs added in this release)
 
 ## 1.2 - feature release (2019/8/15)
-* added LIBx.VERSION setting for adding major/minor/patch version to shared libraries built.  If version is specified, symlinks are created for .so & .so.MAJOR_VERSION version(s) of the shared library
-* added additional target aliases for binaries/libraries when building with OUTPUT_DIR/LIB_OUTPUT_DIR/BIN_OUTPUT_DIR set
-* added test failure output message
-* output messages are now color coded:
+* Added LIBx.VERSION setting for adding major/minor/patch version to shared libraries built.  If version is specified, symlinks are created for .so & .so.MAJOR_VERSION version(s) of the shared library.
+* Added additional target aliases for binaries/libraries when building with OUTPUT_DIR/LIB_OUTPUT_DIR/BIN_OUTPUT_DIR set.
+* Added test failure output message.
+* Output messages are now color coded:
    * cyan - binary/library built
    * magenta - file removed, warning
    * green - test passed
    * red - test failed
-* unit tests are forced to build/execute after binary builds<br>(previously they were only forced to run after library builds like binaries)
+* Unit tests are forced to build/execute after binary builds<br>(previously they were only forced to run after library builds like binaries).
 
 ## 1.1.1 - bug fix release (2019/8/1)
-* fixed issues with building both shared & static version of a library
+* Fixed issues with building both shared & static version of a library.
 
 ## 1.1 - feature release (2019/7/7)
-* added warnings for unknown binary/library/test parameter variables<br>(for example, setting 'BIN1.OBJ' will trigger a warning since the correct variable is 'BIN1.OBJS')
-* PACKAGES changes or package version changes trigger a full rebuild
-* TEST_PACKAGES changes or test package version changes trigger a relink/run of all tests
-* fixes to allow file/directory names starting with '-'
-* added SYMLINKS setting for creating symlinks to the makefile directory to help building source that expects to include headers from different paths
+* Added warnings for unknown binary/library/test parameter variables<br>(for example, setting 'BIN1.OBJ' will trigger a warning since the correct variable is 'BIN1.OBJS').
+* PACKAGES changes or package version changes trigger a full rebuild.
+* TEST_PACKAGES changes or test package version changes trigger a relink/run of all tests.
+* Made fixes to allow file/directory names starting with '-'.
+* Added SYMLINKS setting for creating symlinks to the makefile directory to help building source that expects to include headers from different paths.
 
 ## 1.0 (2019/4/10)
-* first public release
+* First public release
