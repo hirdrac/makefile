@@ -1,5 +1,16 @@
 # Version release history
 
+## 1.20 - general release (2022/6/4)
+NEW FEATURES:
+* Added 'EXCLUDE_TARGETS' for specifying targets to not build by default.
+
+CHANGES:
+* Removed 'not implemented' error message for install/install-strip targets so user can specify their own versions.
+* Color output is disabled if make stdout/stderr is redirected to a file.
+
+FIXES:
+* Stopped creation of build dirs & cache files for targets not built.
+
 ## 1.19 - general release (2022/5/18)
 CHANGES:
 * Static library building improvements

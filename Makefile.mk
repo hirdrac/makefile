@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.19 (2022/5/19)
+# Makefile.mk - version 1.20 (2022/6/4)
 # Copyright (C) 2022 Richard Bradley
 #
 # Additional contributions from:
@@ -121,6 +121,7 @@
 #  SUBDIRS         sub-directories to also make with base targets
 #  SYMLINKS        symlinks to the current dir to create for building
 #  SOURCE_DIR      source files base directory
+#  EXCLUDE_TARGETS targets to not build by default
 #
 #  Settings STANDARD/OPT_LEVEL/OPT_LEVEL_DEBUG/SUBSYSTEM/PACKAGES/INCLUDE/LIBS/
 #    DEFINE/OPTIONS/FLAGS/LINK_FLAGS/SOURCE_DIR can be set for specific targets
@@ -208,6 +209,7 @@ CLOBBER_EXTRA ?=
 SUBDIRS ?=
 SYMLINKS ?=
 SOURCE_DIR ?=
+EXCLUDE_TARGETS ?=
 
 # default values to be more obvious if used/handled improperly
 override ENV := ENV
@@ -216,7 +218,7 @@ override BUILD_TMP := BUILD_TMP
 override LIBPREFIX := lib
 
 # apply *_EXTRA setting values (WARN_EXTRA handled above)
-$(foreach x,WARN_C WARN_CXX PACKAGES PACKAGES_TEST INCLUDE LIBS LIBS_TEST DEFINE OPTIONS FLAGS FLAGS_TEST FLAGS_RELEASE FLAGS_DEBUG FLAGS_PROFILE,\
+$(foreach x,WARN_C WARN_CXX PACKAGES PACKAGES_TEST INCLUDE LIBS LIBS_TEST DEFINE OPTIONS FLAGS FLAGS_TEST FLAGS_RELEASE FLAGS_DEBUG FLAGS_PROFILE LINK_FLAGS EXCLUDE_TARGETS,\
   $(if $($x_EXTRA),$(eval override $x += $($x_EXTRA))))
 
 
@@ -276,26 +278,28 @@ override _clang_modern := -Wzero-as-null-pointer-constant -Wregister -Winconsist
 # _fg2 - warning or removal notice
 # _fg3 - test passed
 # _fg4 - test failed or fatal error
-ifneq ($(shell which setterm 2>/dev/null),)
-  override _bold := $(shell setterm --bold on)
-  override _fg0 := $(shell setterm --foreground default)
-  override _fg1 := $(shell setterm --foreground cyan)
-  override _fg2 := $(shell setterm --foreground magenta)
-  override _fg3 := $(shell setterm --foreground green)
-  override _fg4 := $(shell setterm --foreground red)
-  override _end := $(shell setterm --default)
-else
-  override _bold := $(shell echo -e '\e[1m')
-  override _fg0 := $(shell echo -e '\e[39m')
-  override _fg1 := $(shell echo -e '\e[36m')
-  override _fg2 := $(shell echo -e '\e[35m')
-  override _fg3 := $(shell echo -e '\e[32m')
-  override _fg4 := $(shell echo -e '\e[31m')
-  override _end := $(shell echo -e '\e[m')
+ifneq ($(and $(MAKE_TERMOUT),$(MAKE_TERMERR)),)
+  ifneq ($(shell which setterm 2>/dev/null),)
+    override _bold := $(shell setterm --bold on)
+    override _fg0 := $(shell setterm --foreground default)
+    override _fg1 := $(shell setterm --foreground cyan)
+    override _fg2 := $(shell setterm --foreground magenta)
+    override _fg3 := $(shell setterm --foreground green)
+    override _fg4 := $(shell setterm --foreground red)
+    override _end := $(shell setterm --default)
+  else
+    override _bold := $(shell echo -e '\e[1m')
+    override _fg0 := $(shell echo -e '\e[39m')
+    override _fg1 := $(shell echo -e '\e[36m')
+    override _fg2 := $(shell echo -e '\e[35m')
+    override _fg3 := $(shell echo -e '\e[32m')
+    override _fg4 := $(shell echo -e '\e[31m')
+    override _end := $(shell echo -e '\e[m')
+  endif
+  override _msgInfo := $(_bold)$(_fg1)
+  override _msgWarn := $(_bold)$(_fg2)
+  override _msgErr := $(_bold)$(_fg4)
 endif
-override _msgInfo := $(_bold)$(_fg1)
-override _msgWarn := $(_bold)$(_fg2)
-override _msgErr := $(_bold)$(_fg4)
 
 
 #### Compiler/Standard Specific Setup ####
@@ -609,14 +613,23 @@ override _$1_libbin_targets :=\
 override _$1_file_targets := $$(foreach x,$$(_file_labels),$$($$x))
 override _$1_test_targets := $$(foreach x,$$(_test_labels),$$x$$(_$1_sfx))
 override _$1_build_targets := $$(_$1_file_targets) $$(_$1_libbin_targets) $$(_$1_test_targets)
+
+override _$1_filter_targets :=\
+$$(sort $$(foreach x,$$(EXCLUDE_TARGETS),\
+  $$(if $$(filter $$x,$$(_lib_labels)),\
+    $$(call _gen_static_lib_name,$1,$$x) $$(call _gen_shared_lib_name,$1,$$x),\
+    $$x $$($$x) $$(if $$(_$1_sfx),$$($$x)$$(_$1_sfx)))))
+override _$1_build2_targets := $$(filter-out $$(_$1_filter_targets),$$(_$1_build_targets))
+override _$1_test2_targets := $$(filter-out $$(_$1_filter_targets),$$(_$1_test_targets))
+
 override _$1_aliases :=\
   $$(foreach x,$$(_all_labels),$$x$$(_$1_sfx))\
   $$(foreach x,$$(_bin_labels),$$(call _gen_bin_aliases,$1,$$x))\
   $$(foreach x,$$(_static_lib_labels),$$(call _gen_static_lib_aliases,$1,$$x))\
   $$(_$1_shared_aliases)
 override _$1_goals := $$(sort\
-  $$(if $$(filter $$(if $$(filter $1,$$(DEFAULT_ENV)),all) $1,$$(MAKECMDGOALS)),$$(_$1_build_targets))\
-  $$(if $$(filter $$(if $$(filter $1,$$(DEFAULT_ENV)),tests) tests_$1,$$(MAKECMDGOALS)),$$(_$1_test_targets))\
+  $$(if $$(filter $$(if $$(filter $1,$$(DEFAULT_ENV)),all) $1,$$(MAKECMDGOALS)),$$(_$1_build2_targets))\
+  $$(if $$(filter $$(if $$(filter $1,$$(DEFAULT_ENV)),tests) tests_$1,$$(MAKECMDGOALS)),$$(_$1_test2_targets))\
   $$(filter $$(_$1_build_targets) $$(sort $$(_$1_aliases)),$$(MAKECMDGOALS)))
 endef
 $(foreach e,$(_env_names),$(eval $(call _setup_env1,$e)))
@@ -939,8 +952,8 @@ help:
 	  echo "$$X"; done
 
 override define _setup_env_targets  # <1:build env>
-$1: $$(_$1_build_targets)
-tests_$1: $$(_$1_test_targets)
+$1: $$(_$1_build2_targets)
+tests_$1: $$(_$1_test2_targets)
 
 clean_$1:
 	@([ -d "$$(BUILD_DIR)/$1_tmp" ] && $$(RM) "$$(BUILD_DIR)/$1_tmp/"* && rmdir -- "$$(BUILD_DIR)/$1_tmp") || true
@@ -964,9 +977,6 @@ clobber: clean
 	@for X in $(foreach y,$(sort $(filter-out ./,$(foreach e,$(_env_names),$(foreach x,$(_$e_libbin_targets) $(_$e_file_targets),$(dir $x))))),"$y"); do\
 	  ([ -d "$$X" ] && rmdir -p --ignore-fail-on-non-empty -- "$$X") || true; done
 
-install: ; $(error $(_msgErr)Target 'install' not implemented$(_end))
-install-strip: ; $(error $(_msgErr)Target 'install-strip' not implemented$(_end))
-
 override define _make_subdir_target  # <1:target>
 $1: _subdir_$1
 .PHONY: _subdir_$1
@@ -986,22 +996,22 @@ endif
 
 #### Build Macros ####
 override define _rebuild_check  # <1:trigger file> <2:trigger text>
+$1: | $$(dir $1) ; @echo "$$(strip $2)" >$1
 ifneq ($$(strip $$(file <$1)),$$(strip $2))
   ifneq ($$(file <$1),)
     $$(info $$(_msgWarn)$1 changed$$(_end))
+    $$(shell $$(RM) "$1")
   endif
-  $$(if $$(strip $$(filter-out ./,$$(dir $1))),$$(shell mkdir -p "$$(dir $1)"))
-  $$(file >$1,$2)
 endif
 endef
 
 override define _rebuild_check_var # <1:trigger file> <2:trigger text var>
+$1: | $$(dir $1) ; @echo "$$(strip $$($2))" >$1
 ifneq ($$(strip $$(file <$1)),$$(strip $$($2)))
   ifneq ($$(file <$1),)
     $$(info $$(_msgWarn)$1 changed$$(_end))
+    $$(shell $$(RM) "$1")
   endif
-  $$(if $$(strip $$(filter-out ./,$$(dir $1))),$$(shell mkdir -p "$$(dir $1)"))
-  $$(file >$1,$$(value $2))
 endif
 endef
 
@@ -1126,12 +1136,12 @@ endef
 
 
 override define _make_obj  # <1:path> <2:build> <3:flags> <4:src list>
-ifneq ($4,)
+$1 $1/: ; @mkdir -p "$$@"
 $1/%.mk: ; @$$(RM) "$$(@:.mk=.o)"
 
 ifneq ($$(filter $$(_c_ptrn),$4),)
 $$(eval $$(call _rebuild_check,$1/.compile_cmd_c,$$(CC) $$(_cflags_$2) $3))
-$(addprefix $1/,$(addsuffix .o,$(call _src_bname,$(filter $(_c_ptrn),$4)))):
+$(addprefix $1/,$(addsuffix .o,$(call _src_bname,$(filter $(_c_ptrn),$4)))): | $1
 	$$(strip $$(CC) $$(_cflags_$2) $3) -MMD -MP -MT '$$@' -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_c_ptrn),$4),\
   $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd_c)))
@@ -1139,7 +1149,7 @@ endif
 
 ifneq ($$(filter $$(_asm_ptrn),$4),)
 $$(eval $$(call _rebuild_check,$1/.compile_cmd_s,$$(AS) $$(_asflags_$2) $3))
-$(addprefix $1/,$(addsuffix .o,$(call _src_bname,$(filter $(_asm_ptrn),$4)))):
+$(addprefix $1/,$(addsuffix .o,$(call _src_bname,$(filter $(_asm_ptrn),$4)))): | $1
 	$$(strip $$(AS) $$(_asflags_$2) $3) -MMD -MP -MT '$$@' -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_asm_ptrn),$4),\
   $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd_s)))
@@ -1147,11 +1157,10 @@ endif
 
 ifneq ($$(filter $$(_cxx_ptrn),$4),)
 $$(eval $$(call _rebuild_check,$1/.compile_cmd,$$(CXX) $$(_cxxflags_$2) $3))
-$(addprefix $1/,$(addsuffix .o,$(call _src_bname,$(filter $(_cxx_ptrn),$4)))):
+$(addprefix $1/,$(addsuffix .o,$(call _src_bname,$(filter $(_cxx_ptrn),$4)))): | $1
 	$$(strip $$(CXX) $$(_cxxflags_$2) $3) -MMD -MP -MT '$$@' -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_cxx_ptrn),$4),\
   $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd)))
-endif
 endif
 endef
 
@@ -1159,6 +1168,8 @@ endef
 #### Create Build Targets ####
 .DELETE_ON_ERROR:
 ifneq ($(_build_env),)
+  $(BUILD_DIR) $(BUILD_DIR)/: ; @mkdir -p "$@"
+
   # symlink creation rule
   $(foreach x,$(_symlinks),$(eval $x: ; @ln -s . "$x"))
 
