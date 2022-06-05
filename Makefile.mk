@@ -373,7 +373,7 @@ ifneq ($$(filter pthread,$$($1)),)
   override $2_op_flags += -pthread
 endif
 ifneq ($$(filter lto,$$($1)),)
-  override $2_op_flags += -flto
+  override $2_op_flags += -flto=auto
 endif
 ifneq ($$(filter pedantic,$$($1)),)
   override $2_op_warn += -Wpedantic
