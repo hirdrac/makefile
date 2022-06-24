@@ -1,5 +1,17 @@
 # Version release history
 
+## 1.21 - general release (2022/6/20)
+CHANGES:
+* FILE labels are translated into file targets in <X>.DEPS settings (same as BIN labels).
+* CLEAN_EXTRA/CLOBBER_EXTRA now accept wildcards.
+* Recursive search '**' wildcard are now allowed as the last directory in a directory path.  (i.e.  python/**/__pycache__)
+* Simplified binary/library link commands:
+   * Linking done from object build directory to shorten object file names.
+   * Some unnecessary compiler flags are removed.
+
+FIXES:
+* Commands with a dollar sign or double quote now are properly cached for rebuild comparison checks. (broke in v1.20)
+
 ## 1.20 - general release (2022/6/4)
 NEW FEATURES:
 * Added 'EXCLUDE_TARGETS' for specifying targets to not build by default.
