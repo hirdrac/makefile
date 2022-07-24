@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.21 (2022/6/20)
+# Makefile.mk - version 1.22 (2022/7/23)
 # Copyright (C) 2022 Richard Bradley
 #
 # Additional contributions from:
@@ -121,7 +121,7 @@
 #  SUBDIRS         sub-directories to also make with base targets
 #  SYMLINKS        symlinks to the current dir to create for building
 #  SOURCE_DIR      source files base directory
-#  EXCLUDE_TARGETS targets to not build by default
+#  EXCLUDE_TARGETS labels/files not built by default (wildcard '*' allowed)
 #
 #  Settings STANDARD/OPT_LEVEL/OPT_LEVEL_DEBUG/SUBSYSTEM/PACKAGES/INCLUDE/LIBS/
 #    DEFINE/OPTIONS/FLAGS/LINK_FLAGS/SOURCE_DIR can be set for specific targets
@@ -585,6 +585,15 @@ override _$1_bdir := $$(if $$(OUTPUT_BIN_DIR),$$(OUTPUT_BIN_DIR:%/=%)/)
 endef
 $(foreach e,$(_env_names),$(eval $(call _setup_env0,$e)))
 
+
+# <1:build env> <2:label/file pattern>
+override _gen_filter_targets =\
+$(foreach x,$(filter $2,$(_bin_labels)),$(call _gen_bin_name,$1,$x) $(call _gen_bin_aliases,$1,$x))\
+$(foreach x,$(filter $2,$(_static_lib_labels)),$(call _gen_static_lib_name,$1,$x) $(call _gen_static_lib_aliases,$1,$x))\
+$(foreach x,$(filter $2,$(_shared_lib_labels)),$(call _gen_shared_lib_name,$1,$x) $(call _gen_shared_lib_aliases,$1,$x))\
+$(foreach x,$(filter $2,$(_file_labels)),$($x))\
+$(foreach x,$(filter $2,$(_test_labels)),$x$(_$1_sfx)) $2
+
 override define _setup_env1  # <1:build env>
 override ENV := $1
 override SFX := $$(_$1_sfx)
@@ -615,24 +624,29 @@ override _$1_test_targets := $$(foreach x,$$(_test_labels),$$x$$(_$1_sfx))
 override _$1_build_targets := $$(_$1_file_targets) $$(_$1_libbin_targets) $$(_$1_test_targets)
 
 override _$1_filter_targets :=\
-$$(sort $$(foreach x,$$(EXCLUDE_TARGETS),\
-  $$(if $$(filter $$x,$$(_lib_labels)),\
-    $$(call _gen_static_lib_name,$1,$$x) $$(call _gen_shared_lib_name,$1,$$x),\
-    $$x $$($$x) $$(if $$(_$1_sfx),$$($$x)$$(_$1_sfx)))))
-override _$1_build2_targets := $$(filter-out $$(_$1_filter_targets),$$(_$1_build_targets))
-override _$1_test2_targets := $$(filter-out $$(_$1_filter_targets),$$(_$1_test_targets))
+  $$(foreach x,$$(EXCLUDE_TARGETS),$$(call _gen_filter_targets,$1,$$(subst *,%,$$x)))
 
 override _$1_aliases :=\
   $$(foreach x,$$(_all_labels),$$x$$(_$1_sfx))\
   $$(foreach x,$$(_bin_labels),$$(call _gen_bin_aliases,$1,$$x))\
   $$(foreach x,$$(_static_lib_labels),$$(call _gen_static_lib_aliases,$1,$$x))\
   $$(_$1_shared_aliases)
+endef
+$(foreach e,$(_env_names),$(eval $(call _setup_env1,$e)))
+
+
+override _filter_targets := $(sort $(foreach e,$(_env_names),$(_$e_filter_targets)))
+
+override define _setup_env2 # <1:build env>
+override _$1_build2_targets := $$(filter-out $$(_filter_targets),$$(_$1_build_targets))
+override _$1_test2_targets := $$(filter-out $$(_filter_targets),$$(_$1_test_targets))
 override _$1_goals := $$(sort\
   $$(if $$(filter $$(if $$(filter $1,$$(DEFAULT_ENV)),all) $1,$$(MAKECMDGOALS)),$$(_$1_build2_targets))\
   $$(if $$(filter $$(if $$(filter $1,$$(DEFAULT_ENV)),tests) tests_$1,$$(MAKECMDGOALS)),$$(_$1_test2_targets))\
   $$(filter $$(_$1_build_targets) $$(sort $$(_$1_aliases)),$$(MAKECMDGOALS)))
 endef
-$(foreach e,$(_env_names),$(eval $(call _setup_env1,$e)))
+$(foreach e,$(_env_names),$(eval $(call _setup_env2,$e)))
+
 
 # setting value processing functions
 override _format_warn = $(foreach x,$1,$(if $(filter -%,$x),$x,-W$x))
@@ -646,11 +660,7 @@ $(if $(filter ./,$(dir $1)),,-L$(dir $1)) -l$(if $(filter %.a %.so %.dll,$1),:)$
 override _format_lib_name =\
 $(if $1,$(if $(filter ./,$(dir $1)),,-L$(dir $1)) -l:$(notdir $1))
 
-override _format_global_libs = $(foreach x,$1,\
-$(if $(filter $x,$(_lib_labels)),$(error $(_msgErr)LIB label '$x' not allowed in global LIBS setting$(_end)),\
-$(call _format_lib_arg,$x)))
-
-override _format_target_libs = $(foreach x,$1,\
+override _format_libs = $(foreach x,$1,\
 $(if $(filter $x,$(_lib_labels)),$(or $(call _format_lib_name,$(_$x_shared_name)),$(_$x_name)),\
 $(call _format_lib_arg,$x)))
 
@@ -701,9 +711,6 @@ else ifneq ($(_build_env),)
     override _src_path_$(ENV)-tests := $(_src_path)
   endif
 
-  override _libs := $(call _format_global_libs,$(LIBS))
-  override _libs_test := $(call _format_global_libs,$(LIBS_TEST))
-
   ## entry name & alias target assignment
   $(foreach x,$(_file_labels),\
     $(eval override _$x_name := $($x))\
@@ -738,7 +745,7 @@ else ifneq ($(_build_env),)
     $(if $(filter $d,$(_bin_labels) $(_file_labels)),$(_$d_name),$(call _do_wildcard,$d,)))))
 
   ## general entry setting parsing (pre)
-  override define _build_entry1  # <1:label>
+  override define _build_entry1  # <1:label> <2:test flag>
   ifneq ($$(strip $$($1.SOURCE_DIR)),-)
     $$(eval $$(call _check_dir,$1.SOURCE_DIR))
     override _$1_source_dir := $$(if $$($1.SOURCE_DIR),$$(filter-out ./,$$($1.SOURCE_DIR:%/=%)/))
@@ -795,7 +802,7 @@ else ifneq ($(_build_env),)
   endif
 
   ifneq ($$(strip $$($1.LIBS)),-)
-    override _$1_libs := $$(or $$(call _format_target_libs,$$($1.LIBS)),$$(_libs))
+    override _$1_libs := $$(filter-out $1,$$(or $$($1.LIBS),$$(LIBS) $$(if $2,$$(LIBS_TEST))))
   endif
 
   ifneq ($$(strip $$($1.DEFINE)),-)
@@ -810,19 +817,18 @@ else ifneq ($(_build_env),)
     override _$1_flags := $$(or $$($1.FLAGS),$$(FLAGS))
   endif
   endef
-  $(foreach x,$(_src_labels),$(eval $(call _build_entry1,$x)))
+  $(foreach x,$(_lib_labels) $(_bin_labels),$(eval $(call _build_entry1,$x,)))
+  $(foreach x,$(_test_labels),$(eval $(call _build_entry1,$x,test)))
 
   ## general entry setting parsing (post)
   override define _build_entry2  # <1:label> <2:test flag>
-  ifneq ($$(strip $$($1.LIBS)),-)
-    override _$1_req_pkgs1 := $$(foreach x,$$($1.LIBS),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_pkgs)))
-    override _$1_req_libs1 := $$(foreach x,$$($1.LIBS),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_libs)))
-    override _$1_link_deps := $$(foreach x,$$($1.LIBS),$$(if $$(filter $$x,$$(_lib_labels)),$$(or $$(_$$x_shared_name),$$(_$$x_name))))
-  endif
+  override _$1_req_pkgs1 := $$(foreach x,$$(_$1_libs),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_pkgs)))
+  override _$1_req_libs1 := $$(filter-out $1,$$(foreach x,$$(_$1_libs),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_libs))))
+  override _$1_link_deps := $$(foreach x,$$(_$1_libs),$$(if $$(filter $$x,$$(_lib_labels)),$$(or $$(_$$x_shared_name),$$(_$$x_name))))
 
   ifneq ($$(strip $$($1.OBJS)),-)
     override _$1_req_pkgs2 := $$(foreach x,$$($1.OBJS),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_pkgs)))
-    override _$1_req_libs2 := $$(foreach x,$$($1.OBJS),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_libs)))
+    override _$1_req_libs2 := $$(filter-out $1,$$(foreach x,$$($1.OBJS),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_libs))))
   endif
 
   override _$1_xpkgs := $$(sort $$(_$1_pkgs) $$(if $2,$$(_pkgs_test)) $$(_$1_req_pkgs1) $$(_$1_req_pkgs2))
@@ -839,7 +845,7 @@ else ifneq ($(_build_env),)
     endif
   endif
 
-  override _$1_xlibs := $$(_$1_libs) $$(if $2,$$(_libs_test)) $$(_$1_req_libs1) $$(_$1_req_libs2) $$(_$1_pkg_libs)
+  override _$1_xlibs := $$(call _format_libs,$$(_$1_libs) $$(_$1_req_libs1) $$(_$1_req_libs2))
 
   # NOTE: LIBS before PACKAGES libs in case included static lib requires package
   override _$1_xflags := $$(_$1_pkg_flags) $$(_$1_flags) $$(FLAGS_$$(_$$(ENV)_uc)) $$(if $2,$$(FLAGS_TEST))
@@ -1072,7 +1078,7 @@ endef
 override define _make_shared_lib  # <1:label>
 override _$1_shared_build_dir := $$(BUILD_DIR)/$$(_$1_build)$$(if $$(_pic_flag),-pic)
 override _$1_shared_objs := $$(addprefix $$(_$1_shared_build_dir)/,$$(_$1_src_objs))
-override _$1_shared_link_cmd := cd '$$(_$1_shared_build_dir)'; $$(strip $$(call _do_link,$1) $$(_pic_flag) -shared $$(_$1_src_objs) $$(call _fix_path,$$(_$1_other_objs) $$(_$1_xlibs))) -o '../../$$(_$1_shared_name)'
+override _$1_shared_link_cmd := cd '$$(_$1_shared_build_dir)'; $$(strip $$(call _do_link,$1) $$(_pic_flag) -shared $$(_$1_src_objs) $$(call _fix_path,$$(_$1_other_objs) $$(_$1_xlibs)) $$(_$1_pkg_libs)) -o '../../$$(_$1_shared_name)'
 override _$1_shared_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1-shared
 $$(eval $$(call _rebuild_check_var,$$$$(_$1_shared_trigger),_$1_shared_link_cmd))
 
@@ -1092,7 +1098,7 @@ endef
 
 # binary build
 override define _make_bin  # <1:label>
-override _$1_link_cmd := cd '$$(_$1_build_dir)'; $$(strip $$(call _do_link,$1) $$(_$1_src_objs) $$(call _fix_path,$$(_$1_other_objs) $$(_$1_xlibs))) -o '../../$$(_$1_name)'
+override _$1_link_cmd := cd '$$(_$1_build_dir)'; $$(strip $$(call _do_link,$1) $$(_$1_src_objs) $$(call _fix_path,$$(_$1_other_objs) $$(_$1_xlibs)) $$(_$1_pkg_libs)) -o '../../$$(_$1_name)'
 override _$1_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1
 $$(eval $$(call _rebuild_check_var,$$$$(_$1_trigger),_$1_link_cmd))
 
@@ -1127,7 +1133,7 @@ endef
 # - always execute test binary if a test target was specified otherwise only
 #     run test if rebuilt
 override define _make_test  # <1:label>
-override _$1_link_cmd := cd '$$(_$1_build_dir)'; $$(strip $$(call _do_link,$1) $$(_$1_src_objs) $$(call _fix_path,$$(_$1_other_objs) $$(_$1_xlibs))) -o '$$(_$1_name)'
+override _$1_link_cmd := cd '$$(_$1_build_dir)'; $$(strip $$(call _do_link,$1) $$(_$1_src_objs) $$(call _fix_path,$$(_$1_other_objs) $$(_$1_xlibs)) $$(_$1_pkg_libs)) -o '$$(_$1_name)'
 override _$1_trigger := $$(BUILD_DIR)/.$$(ENV)-cmd-$1
 $$(eval $$(call _rebuild_check_var,$$$$(_$1_trigger),_$1_link_cmd))
 

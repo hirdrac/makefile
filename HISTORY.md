@@ -1,5 +1,14 @@
 # Version release history
 
+## 1.22 - general release (2022/7/23)
+CHANGES:
+* EXCLUDE_TARGETS now accepts '*' wildcard.
+* LIBS_TEST no longer adds libraries to tests with their own LIBS settings. (use 'TEST1.LIBS = $(LIBS_TEST) ...' for old behavior)
+* Library labels are now allowed in global LIBS/LIBS_TEST settings.  In cases where LIBS is used in building a library, the library will always ignore its own lib label.
+
+FIXES:
+* Library search directories (-L flags) from pkg-config are no longer 'fixed' because of the build location - this was resulting in some strange library paths on MSys2/MinGW builds where the path could include a drive letter (i.e. -LC:/msys64/mingw64/lib).
+
 ## 1.21 - general release (2022/6/20)
 CHANGES:
 * FILE labels are translated into file targets in <X>.DEPS settings (same as BIN labels).
