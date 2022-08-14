@@ -1,5 +1,14 @@
 # Version release history
 
+## 1.23 - general release (2022/8/9)
+CHANGES:
+* Added support for TEMPLATE_<id> style labels.
+
+FIXES:
+* Fixed a TEMPLATE error message.
+* Removed filtering of -include/-imacros flags from linking command (caused an error & wasn't necessary).
+* Minor comment fixes/cleanup.
+
 ## 1.22 - general release (2022/7/23)
 CHANGES:
 * EXCLUDE_TARGETS now accepts '*' wildcard.

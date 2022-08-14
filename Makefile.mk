@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.22 (2022/7/23)
+# Makefile.mk - version 1.23 (2022/8/9)
 # Copyright (C) 2022 Richard Bradley
 #
 # Additional contributions from:
@@ -351,7 +351,7 @@ override define _verify_pkgs  # <1:config pkgs var> <2:valid pkgs>
 ifeq ($$($1),)
 else ifeq ($$($1),-)
 else ifneq ($$(words $$($1)),$$(words $$($2)))
-  $$(error $$(_msgErr)Cannot build because of package error(s)$$(_end))
+  $$(error $$(_msgErr)Cannot build because of package error$$(_end))
 endif
 endef
 
@@ -407,8 +407,10 @@ override _10-99 := $(foreach x,$(_1-9),$(addprefix $x,0 $(_1-9)))
 override _1-99 := $(_1-9) $(_10-99)
 override _1-999 := $(_1-99) $(foreach x,$(_1-9),$(addprefix $x,$(addprefix 0,0 $(_1-9)) $(_10-99)))
 
-# TEMPLATE<1-99> labels
-override _template_labels := $(filter $(sort $(foreach x,$(filter TEMPLATE%,$(.VARIABLES)),$(word 1,$(subst ., ,$x)))),$(addprefix TEMPLATE,$(_1-99)))
+# TEMPLATE<1-99>, TEMPLATE_<id> labels
+override _template_labels1 := $(filter $(sort $(foreach x,$(filter TEMPLATE%,$(.VARIABLES)),$(word 1,$(subst ., ,$x)))),$(addprefix TEMPLATE,$(_1-99)))
+override _template_labels2 := $(sort $(foreach x,$(filter TEMPLATE_%,$(.VARIABLES)),$(if $(findstring .,$x),$(word 1,$(subst ., ,$x)))))
+override _template_labels := $(strip $(_template_labels1) $(_template_labels2))
 
 # verify template configs
 override define _check_template_entry  # <1:label>
@@ -416,7 +418,7 @@ override _$1_labels := $$(subst $1.,,$$(filter $1.FILE%,$$(.VARIABLES)))
 ifeq ($$(_$1_labels),)
   $$(error $$(_msgErr)$1: no FILE entries$$(_end))
 else ifeq ($$(strip $$($1)),)
-  $$(error $$(_msgErr)$1 required)
+  $$(error $$(_msgErr)$1 required$$(_end))
 else ifeq ($$(strip $$($1.CMD)),)
   $$(error $$(_msgErr)$1.CMD required$$(_end))
 endif
@@ -445,7 +447,7 @@ override _lib_labels := $(strip $(_lib_labels1) $(_lib_labels2))
 override _static_lib_labels := $(strip $(foreach x,$(_lib_labels),$(if $($x.TYPE),$(if $(filter static,$($x.TYPE)),$x),$x)))
 override _shared_lib_labels := $(strip $(foreach x,$(_lib_labels),$(if $(filter shared,$($x.TYPE)),$x)))
 
-# BIN<1-99>, BIN_<id> labels (<id> is the default target>
+# BIN<1-99>, BIN_<id> labels (<id> is the default target)
 override _bin_labels1 := $(filter $(sort $(foreach x,$(filter BIN%,$(.VARIABLES)),$(word 1,$(subst ., ,$x)))),$(addprefix BIN,$(_1-99)))
 override _bin_labels2 := $(sort $(foreach x,$(filter BIN_%,$(.VARIABLES)),$(if $(findstring .,$x),$(word 1,$(subst ., ,$x)))))
 $(foreach x,$(_bin_labels2),$(eval $x ?= $(subst BIN_,,$x)))
@@ -456,7 +458,7 @@ override _file_labels1 := $(filter $(sort $(foreach x,$(filter FILE%,$(.VARIABLE
 override _file_labels2 := $(sort $(foreach x,$(filter FILE_%,$(.VARIABLES)),$(if $(findstring .,$x),$(word 1,$(subst ., ,$x)))))
 override _file_labels := $(strip $(_file_labels1) $(_file_labels2))
 
-# TEST<1-999> TEST_<id> labels
+# TEST<1-999>, TEST_<id> labels
 override _test_labels1 := $(filter $(sort $(foreach x,$(filter TEST%,$(.VARIABLES)),$(word 1,$(subst ., ,$x)))),$(addprefix TEST,$(_1-999)))
 override _test_labels2 := $(sort $(foreach x,$(filter TEST_%,$(.VARIABLES)),$(if $(findstring .,$x),$(word 1,$(subst ., ,$x)))))
 override _test_labels := $(strip $(_test_labels1) $(_test_labels2))
@@ -691,13 +693,13 @@ else ifneq ($(_build_env),)
 
   override _define := $(call _format_define,$(DEFINE))
   override _include := $(call _format_include,$(INCLUDE))
-  override _warn := $(call _format_warn,$(WARN_CXX))
+  override _warn_cxx := $(call _format_warn,$(WARN_CXX))
   override _warn_c := $(call _format_warn,$(WARN_C))
 
   # setup compile flags for each build path
   override _pkg_flags := $(call _get_pkg_flags,$(_pkgs))
   override _xflags :=  $(_pkg_flags) $(FLAGS) $(FLAGS_$(_$(ENV)_uc))
-  override _cxxflags_$(ENV) := $(strip $(_cxx_std) $(_$(ENV)_opt) $(_warn) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_xflags))
+  override _cxxflags_$(ENV) := $(strip $(_cxx_std) $(_$(ENV)_opt) $(_warn_cxx) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_xflags))
   override _cflags_$(ENV) := $(strip $(_c_std) $(_$(ENV)_opt) $(_warn_c) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_xflags))
   override _asflags_$(ENV) := $(strip $(_$(ENV)_opt) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_xflags))
   override _src_path_$(ENV) := $(_src_path)
@@ -705,7 +707,7 @@ else ifneq ($(_build_env),)
   ifneq ($(_test_labels),)
     override _test_pkg_flags := $(if $(_pkgs_test),$(call _get_pkg_flags,$(_pkgs) $(_pkgs_test)),$(_pkg_flags))
     override _test_xflags :=  $(_test_pkg_flags) $(FLAGS) $(FLAGS_$(_$(ENV)_uc)) $(FLAGS_TEST)
-    override _cxxflags_$(ENV)-tests := $(strip $(_cxx_std) $(_$(ENV)_opt) $(_warn) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_test_xflags))
+    override _cxxflags_$(ENV)-tests := $(strip $(_cxx_std) $(_$(ENV)_opt) $(_warn_cxx) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_test_xflags))
     override _cflags_$(ENV)-tests := $(strip $(_c_std) $(_$(ENV)_opt) $(_warn_c) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_test_xflags))
     override _asflags_$(ENV)-tests := $(strip $(_$(ENV)_opt) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_test_xflags))
     override _src_path_$(ENV)-tests := $(_src_path)
@@ -849,7 +851,7 @@ else ifneq ($(_build_env),)
 
   # NOTE: LIBS before PACKAGES libs in case included static lib requires package
   override _$1_xflags := $$(_$1_pkg_flags) $$(_$1_flags) $$(FLAGS_$$(_$$(ENV)_uc)) $$(if $2,$$(FLAGS_TEST))
-  override _cxxflags_$$(ENV)-$1 := $$(strip $$(_$1_cxx_std) $$(call _$$(ENV)_opt,$1) $$(_warn) $$(_$1_op_cxx_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_cxx_flags) $$(_$1_xflags))
+  override _cxxflags_$$(ENV)-$1 := $$(strip $$(_$1_cxx_std) $$(call _$$(ENV)_opt,$1) $$(_warn_cxx) $$(_$1_op_cxx_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_cxx_flags) $$(_$1_xflags))
   override _cflags_$$(ENV)-$1 := $$(strip $$(_$1_c_std) $$(call _$$(ENV)_opt,$1) $$(_warn_c) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_xflags))
   override _asflags_$$(ENV)-$1 := $$(strip $$(call _$$(ENV)_opt,$1) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_xflags))
 
@@ -1050,7 +1052,7 @@ $(if $(filter -L%,$(filter-out -L/% -L~%,$x)),-L../../$(patsubst -L%,%,$x),\
 $(if $(filter-out /% ~% -%,$x),../../$x,$x)))
 
 # link binary/test/shared lib - <1:label>
-override _do_link = $(filter-out -D% -U% -include% -imacros% -I%,\
+override _do_link = $(filter-out -D% -U% -I%,\
 $(if $(filter cxx,$(_$1_lang)),\
 $(CXX) $(_$1_cxx_std) $(call _$(ENV)_opt,$1) $(_$1_op_cxx_flags),\
 $(CC) $(_$1_c_std) $(call _$(ENV)_opt,$1) $(_$1_op_flags)) $(_$1_xflags)) $(_$1_ldflags)
