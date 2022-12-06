@@ -1,5 +1,16 @@
 # Version release history
 
+## 1.24 - general release (2022/11/29)
+NEW FEATURES:
+* Added <X>.SRC2 setting for specifing source that doesn't use SOURCE_DIR.  (Can be used for all targets that use <X>.SRC).
+
+FIXES:
+* Fixed detection of conflicting object file names that could give false positives when SOURCE_DIR is set.
+* Fixed error message for missing source files when SOURCE_DIR is set.
+
+CHANGES:
+* Improved checks for valid BUILD_DIR.
+
 ## 1.23 - general release (2022/8/9)
 CHANGES:
 * Added support for TEMPLATE_<id> style labels.
