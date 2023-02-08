@@ -1,6 +1,6 @@
 #
-# Makefile.mk - version 1.24 (2022/11/29)
-# Copyright (C) 2022 Richard Bradley
+# Makefile.mk - version 1.24.1 (2023/2/8)
+# Copyright (C) 2023 Richard Bradley
 #
 # Additional contributions from:
 #   Stafford Horne (github:stffrdhrn)
@@ -916,7 +916,7 @@ else ifneq ($(_build_env),)
     $(eval override _$x_ldflags :=\
       -Wl$(_comma)--as-needed$(_comma)--gc-sections -L../..$(if $(_$(ENV)_ldir),/$(_$(ENV)_ldir))\
       $(if $(_$x_soname),-Wl$(_comma)-h$(_comma)'$(_$x_soname)')\
-      $(if $(_$x_implib),-Wl$(_comma)--out-implib$(_comma)'$(_$x_implib)')\
+      $(if $(_$x_implib),-Wl$(_comma)--out-implib$(_comma)'../../$(_$x_implib)')\
       $(if $(_$x_subsystem),-Wl$(_comma)$--subsystem$(_comma)$(_$x_subsystem))\
       $(if $(filter cxx,$(_$x_lang)),$(_$x_op_cxx_link),$(_$x_op_link))\
       $(_$x_link_flags)))

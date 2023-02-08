@@ -1,5 +1,9 @@
 # Version release history
 
+## 1.24.1 - bug fix release (2023/2/8)
+FIXES:
+* Fixed shared library building for Windows platforms.
+
 ## 1.24 - general release (2022/11/29)
 NEW FEATURES:
 * Added <X>.SRC2 setting for specifing source that doesn't use SOURCE_DIR.  (Can be used for all targets that use <X>.SRC).
