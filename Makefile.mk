@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.24.1 (2023/2/8)
+# Makefile.mk - version 1.25 (2023/5/21)
 # Copyright (C) 2023 Richard Bradley
 #
 # Additional contributions from:
@@ -76,6 +76,7 @@
 #  TEST1.DEPS      additional dependencies for building all test 1 objects
 #
 #  COMPILER        compiler to use (gcc,clang)
+#  LINKER          linker to use instead of default (bfd,gold,lld,mold)
 #  CROSS_COMPILE   binutils and gcc toolchain prefix (i.e. arm-linux-gnueabi-)
 #  STANDARD        language standard(s) of source code
 #  OPT_LEVEL       optimization level for release & profile builds
@@ -87,9 +88,11 @@
 #  PACKAGES        list of packages for pkg-config
 #  PACKAGES_TEST   additional packages for all tests
 #  INCLUDE         includes needed not covered by pkg-config (-I optional)
+#  INCLUDE_TEST    additional includes for all tests (-I optional)
 #  LIBS            libraries needed not covered by pkg-config (-l optional)
 #  LIBS_TEST       additional libs for all tests (-l optional)
 #  DEFINE          defines for compilation (-D optional)
+#  DEFINE_TEST     additional defines for all tests (-D optional)
 #  OPTIONS         list of options to enable - use instead of specific flags
 #    warn_error    make all compiler warnings into errors
 #    pthread       compile with pthreads support
@@ -176,6 +179,7 @@ RM ?= rm -f --
 
 #### Basic Settings ####
 COMPILER ?= $(firstword $(_compiler_names))
+LINKER ?=
 CROSS_COMPILE ?=
 STANDARD ?=
 OPT_LEVEL ?= 3
@@ -191,9 +195,11 @@ endif
 PACKAGES ?=
 PACKAGES_TEST ?=
 INCLUDE ?=
+INCLUDE_TEST ?=
 LIBS ?=
 LIBS_TEST ?=
 DEFINE ?=
+DEFINE_TEST ?=
 OPTIONS ?=
 FLAGS ?=
 FLAGS_TEST ?=
@@ -221,8 +227,15 @@ override BUILD_TMP := BUILD_TMP
 override LIBPREFIX := lib
 
 # apply *_EXTRA setting values (WARN_EXTRA handled above)
-$(foreach x,WARN_C WARN_CXX PACKAGES PACKAGES_TEST INCLUDE LIBS LIBS_TEST DEFINE OPTIONS FLAGS FLAGS_TEST FLAGS_RELEASE FLAGS_DEBUG FLAGS_PROFILE LINK_FLAGS EXCLUDE_TARGETS,\
+$(foreach x,WARN_C WARN_CXX PACKAGES PACKAGES_TEST INCLUDE INCLUDE_TEST LIBS LIBS_TEST DEFINE DEFINE_TEST OPTIONS FLAGS FLAGS_TEST FLAGS_RELEASE FLAGS_DEBUG FLAGS_PROFILE LINK_FLAGS EXCLUDE_TARGETS,\
   $(if $($x_EXTRA),$(eval override $x += $($x_EXTRA))))
+
+
+#### Default Make Flags ####
+ifneq ($(shell which nproc 2>/dev/null),)
+  override _threads := $(shell nproc)
+  override GNUMAKEFLAGS += --load-average=$(_threads)
+endif
 
 
 #### OS Specific Values ####
@@ -272,6 +285,7 @@ override _clang_cxx := clang++
 override _clang_cc := clang
 override _clang_as := clang -x assembler-with-cpp
 override _clang_ar := llvm-ar
+override _clang_ld := lld
 override _clang_warn := shadow
 override _clang_modern := -Wzero-as-null-pointer-constant -Wregister -Winconsistent-missing-override
 
@@ -315,11 +329,15 @@ CC = $(CROSS_COMPILE)$(or $(_$(COMPILER)_cc),cc)
 AS = $(CROSS_COMPILE)$(or $(_$(COMPILER)_as),as)
 AR = $(CROSS_COMPILE)$(or $(_$(COMPILER)_ar),ar)
 
+ifneq ($(strip $(LINKER)),ld)
+  override _linker := $(or $(strip $(LINKER)),$(_$(COMPILER)_ld))
+endif
+
 override _c_ptrn := %.c
 override _c_stds := c90 gnu90 c99 gnu99 c11 gnu11 c17 gnu17 c18 gnu18 c2x gnu2x
 override _asm_ptrn := %.s %.S %.sx
 override _cxx_ptrn := %.cc %.cp %.cxx %.cpp %.CPP %.c++ %.C
-override _cxx_stds := c++98 gnu++98 c++03 gnu++03 c++11 gnu++11 c++14 gnu++14 c++17 gnu++17 c++2a gnu++2a c++20 gnu++20 c++2b gnu++2b c++23 gnu++23
+override _cxx_stds := c++98 gnu++98 c++03 gnu++03 c++11 gnu++11 c++14 gnu++14 c++17 gnu++17 c++2a gnu++2a c++20 gnu++20 c++2b gnu++2b c++23 gnu++23 c++2c gnu++2c c++26 gnu++26
 
 override define _check_standard  # <1:standard var> <2:set prefix>
 override $2_cxx_std := $$(addprefix -std=,$$(filter $$($1),$$(_cxx_stds)))
@@ -698,7 +716,9 @@ else ifneq ($(_build_env),)
   override _pkgs_test := $(call _check_pkgs,PACKAGES_TEST)
 
   override _define := $(call _format_define,$(DEFINE))
+  override _define_test := $(call _format_define,$(DEFINE_TEST))
   override _include := $(call _format_include,$(INCLUDE))
+  override _include_test := $(call _format_include,$(INCLUDE_TEST))
   override _warn_cxx := $(call _format_warn,$(WARN_CXX))
   override _warn_c := $(call _format_warn,$(WARN_C))
 
@@ -711,11 +731,10 @@ else ifneq ($(_build_env),)
   override _src_path_$(ENV) := $(_src_path)
 
   ifneq ($(_test_labels),)
-    override _test_pkg_flags := $(if $(_pkgs_test),$(call _get_pkg_flags,$(_pkgs) $(_pkgs_test)),$(_pkg_flags))
-    override _test_xflags :=  $(_test_pkg_flags) $(FLAGS) $(FLAGS_$(_$(ENV)_uc)) $(FLAGS_TEST)
-    override _cxxflags_$(ENV)-tests := $(strip $(_cxx_std) $(_$(ENV)_opt) $(_warn_cxx) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_test_xflags))
-    override _cflags_$(ENV)-tests := $(strip $(_c_std) $(_$(ENV)_opt) $(_warn_c) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_test_xflags))
-    override _asflags_$(ENV)-tests := $(strip $(_$(ENV)_opt) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_test_xflags))
+    override _test_xflags := $(if $(_pkgs_test),$(call _get_pkg_flags,$(_pkgs) $(_pkgs_test)),$(_pkg_flags)) $(FLAGS) $(FLAGS_TEST) $(FLAGS_$(_$(ENV)_uc))
+    override _cxxflags_$(ENV)-tests := $(strip $(_cxx_std) $(_$(ENV)_opt) $(_warn_cxx) $(_op_cxx_warn) $(_define) $(_define_test) $(_include) $(_include_test) $(_op_cxx_flags) $(_test_xflags))
+    override _cflags_$(ENV)-tests := $(strip $(_c_std) $(_$(ENV)_opt) $(_warn_c) $(_op_warn) $(_define) $(_define_test) $(_include) $(_include_test) $(_op_flags) $(_test_xflags))
+    override _asflags_$(ENV)-tests := $(strip $(_$(ENV)_opt) $(_op_warn) $(_define) $(_define_test) $(_include) $(_include_test) $(_op_flags) $(_test_xflags))
     override _src_path_$(ENV)-tests := $(_src_path)
   endif
 
@@ -793,8 +812,9 @@ else ifneq ($(_build_env),)
     override _$1_subsystem := $$(if $$(_windows),$$(or $$($1.SUBSYSTEM),$$(SUBSYSTEM)))
   endif
 
+  override _$1_link_flags := $(if $(_linker),-fuse-ld=$(_linker))
   ifneq ($$(strip $$($1.LINK_FLAGS)),-)
-    override _$1_link_flags := $$(or $$($1.LINK_FLAGS),$$(LINK_FLAGS))
+    override _$1_link_flags += $$(or $$($1.LINK_FLAGS),$$(LINK_FLAGS))
   endif
 
   ifeq ($$(strip $$($1.STANDARD)),)
@@ -824,15 +844,15 @@ else ifneq ($(_build_env),)
   endif
 
   ifneq ($$(strip $$($1.DEFINE)),-)
-    override _$1_define := $$(or $$(call _format_define,$$($1.DEFINE)),$$(_define))
+    override _$1_define := $$(or $$(call _format_define,$$($1.DEFINE)),$$(_define) $$(if $2,$$(_define_test)))
   endif
 
   ifneq ($$(strip $$($1.INCLUDE)),-)
-    override _$1_include := $$(or $$(call _format_include,$$($1.INCLUDE)),$$(_include))
+    override _$1_include := $$(or $$(call _format_include,$$($1.INCLUDE)),$$(_include) $$(if $2,$$(_include_test)))
   endif
 
   ifneq ($$(strip $$($1.FLAGS)),-)
-    override _$1_flags := $$(or $$($1.FLAGS),$$(FLAGS))
+    override _$1_flags := $$(or $$($1.FLAGS),$$(FLAGS) $$(if $2,$$(FLAGS_TEST)))
   endif
   endef
   $(foreach x,$(_lib_labels) $(_bin_labels),$(eval $(call _build_entry1,$x,)))
@@ -866,7 +886,7 @@ else ifneq ($(_build_env),)
   override _$1_xlibs := $$(call _format_libs,$$(_$1_libs) $$(_$1_req_libs1) $$(_$1_req_libs2))
 
   # NOTE: LIBS before PACKAGES libs in case included static lib requires package
-  override _$1_xflags := $$(_$1_pkg_flags) $$(_$1_flags) $$(FLAGS_$$(_$$(ENV)_uc)) $$(if $2,$$(FLAGS_TEST))
+  override _$1_xflags := $$(_$1_pkg_flags) $$(_$1_flags) $$(FLAGS_$$(_$$(ENV)_uc))
   override _cxxflags_$$(ENV)-$1 := $$(strip $$(_$1_cxx_std) $$(call _$$(ENV)_opt,$1) $$(_warn_cxx) $$(_$1_op_cxx_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_cxx_flags) $$(_$1_xflags))
   override _cflags_$$(ENV)-$1 := $$(strip $$(_$1_c_std) $$(call _$$(ENV)_opt,$1) $$(_warn_c) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_xflags))
   override _asflags_$$(ENV)-$1 := $$(strip $$(call _$$(ENV)_opt,$1) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_xflags))

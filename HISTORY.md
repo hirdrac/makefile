@@ -1,12 +1,23 @@
 # Version release history
 
+## 1.25 - general release (2023/5/21)
+NEW FEATURES:
+* Added LINKER setting to specify binary/test/sharedlib linker (set to 'ld' for default linking).
+* Added INCLUDE_TEST/DEFINE_TEST for additional test settings.
+* Added support for future C++26 standard values.
+
+CHANGES:
+* Make 'load-average' is set to the number of system hardware threads to prevent -j builds from going crazy for projects with too many source files (setting -l on the command line will override this value).
+* Clang builds default to using 'lld' linker if LINKER is not set (set LINKER to 'ld' for previous behavior).
+* Changing target specific FLAGS setting for tests now overrides global FLAGS_TEST as well as global FLAGS setting (this makes the behavior consistent with other *_TEST settings).
+
 ## 1.24.1 - bug fix release (2023/2/8)
 FIXES:
 * Fixed shared library building for Windows platforms.
 
 ## 1.24 - general release (2022/11/29)
 NEW FEATURES:
-* Added <X>.SRC2 setting for specifing source that doesn't use SOURCE_DIR.  (Can be used for all targets that use <X>.SRC).
+* Added <X>.SRC2 setting for specifying source that doesn't use SOURCE_DIR.  (Can be used for all targets that use <X>.SRC).
 
 FIXES:
 * Fixed detection of conflicting object file names that could give false positives when SOURCE_DIR is set.
