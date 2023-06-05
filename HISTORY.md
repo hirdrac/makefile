@@ -1,5 +1,20 @@
 # Version release history
 
+## 1.26 - general release (2023/6/4)
+NEW FEATURES:
+* Added OPTIONS_TEST for additional options on test builds.
+* Enabled version checking for linker binary when LINKER is used.
+
+CHANGES:
+* Environment variables CXX/CC/AS/AR are no longer used for build commands (The only way to control the build commands is with COMPILER setting).
+* Optimized package version caching to reduce pkg-config calls.
+* Reworked compiler/package version cache files (may result in some old files in build directory not being erased with 'make clean').
+* Optimized compile commands (removed unnecessary -MT flag).
+
+FIXES:
+* Fixed CLEAN_EXTRA files not being deleted for 'make clobber'.
+* Added missing shared library symlinks to .gitignore target output.
+
 ## 1.25 - general release (2023/5/21)
 NEW FEATURES:
 * Added LINKER setting to specify binary/test/sharedlib linker (set to 'ld' for default linking).
@@ -93,7 +108,7 @@ CHANGES:
 * Added '--gc-sections' linking flag to (slightly) reduce binary sizes. (-ffunction-sections/-fdata-sections not added to compile flags for now)
 * Added 'missing-include-dirs' to default C/C++ warnings.
 * Binary target names now automatically include '.exe' extension for Windows builds (was previously just relying on MinGW/Cygwin to add the extension).
-* Binary labels (ex: BIN1) are now allowed for all <X>.DEPS settings (built binary name is substituted.)
+* Binary labels (ex: BIN1) are now allowed for all <X>.DEPS settings (built binary name is substituted).
 * $(DEP1),$(DEP2),$(DEPS) output vars for FILE<X>.CMD definition now uses FILE<X>.DEPS setting after wildcards & BIN labels are evaluated.
 * Added error checking for binary names to prevent .exe extension from being specified.
 
@@ -123,7 +138,7 @@ NEW FEATURES:
 * Added error checking for using $(DEPS) in a file command definition but FILE<X>.DEPS isn't defined.
 
 CHANGES:
-* To be consistent with BIN/LIB targets, FILE targets are deleted with 'clobber' instead of the 'clean' target.  (Files created in $(BUILD_TMP) are still deleted with the 'clean' target, however.)
+* To be consistent with BIN/LIB targets, FILE targets are deleted with 'clobber' instead of the 'clean' target (files created in $(BUILD_TMP) are still deleted with the 'clean' target, however).
 * Added 'write-strings' warning to default C warnings.
 
 FIXES:
@@ -163,7 +178,7 @@ CHANGES:
    * RELEASE_FLAGS   -> FLAGS_RELEASE
    * PROFILE_FLAGS   -> FLAGS_PROFILE
    * LIB_PREFIX -> LIBPREFIX
-* All internal variables changed to start with '_' to avoid any possible conflicts with variables used in the Makefile.  (Variables starting with lower-case letters will never conflict with Makefile.mk internal variables or input/output settings.)
+* All internal variables changed to start with '_' to avoid any possible conflicts with variables used in the Makefile (variables starting with lower-case letters will never conflict with Makefile.mk internal variables or input/output settings).
 
 ## 1.12 - general release (2020/4/27)
 NEW FEATURES:
