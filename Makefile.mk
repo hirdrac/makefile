@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 1.26 (2023/6/4)
+# Makefile.mk - version 2.0 (2023/7/10)
 # Copyright (C) 2023 Richard Bradley
 #
 # Additional contributions from:
@@ -14,6 +14,23 @@
 #
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
+#
+# In addition, the following restrictions apply:
+#
+# 1. The Software and any modifications made to it may not be used for the
+# purpose of training or improving machine learning algorithms, including but
+# not limited to artificial intelligence, natural language processing, or data
+# mining. This condition applies to any derivatives, modifications, or updates
+# based on the Software code. Any usage of the Software in an AI-training
+# dataset is considered a breach of this License.
+#
+# 2. The Software may not be included in any dataset used for training or
+# improving machine learning algorithms, including but not limited to
+# artificial intelligence, natural language processing, or data mining.
+#
+# 3. Any person or organization found to be in violation of these restrictions
+# will be subject to legal action and may be held liable for any damages
+# resulting from such use.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -194,9 +211,9 @@ endif
 BUILD_DIR ?= build
 
 # default values to be more obvious if used/handled improperly
-override ENV := ENV
-override SFX := SFX
-override BUILD_TMP := BUILD_TMP
+override ENV := ENV_NOT_SET
+override SFX := SFX_NOT_SET
+override BUILD_TMP := BUILD_TMP_NOT_SET
 override LIBPREFIX := lib
 
 # apply *_EXTRA setting values (WARN_EXTRA handled above)
@@ -350,12 +367,12 @@ $(foreach x,$($1),\
     $(call _pkg_n,$x),\
     $(warning $(_msgWarn)$1: package '$(call _pkg_n,$x)'$(if $(call _pkg_v,$x), [version >= $(call _pkg_v,$x)]) not found$(_end))))
 
-override _get_pkg_flags = $(if $1,$(strip $(shell $(PKGCONF) $1 --cflags)))
-override _get_pkg_libs = $(if $1,$(strip $(shell $(PKGCONF) $1 --libs)))
+override _get_pkg_flags = $(if $1,$(shell $(PKGCONF) $1 --cflags))
+override _get_pkg_libs = $(if $1,$(shell $(PKGCONF) $1 --libs))
 
 override define _verify_pkgs  # <1:config pkgs var> <2:valid pkgs>
-ifeq ($$($1),)
-else ifeq ($$($1),-)
+ifeq ($$(strip $$($1)),)
+else ifeq ($$(strip $$($1)),-)
 else ifneq ($$(words $$($1)),$$(words $$($2)))
   $$(error $$(_msgErr)Cannot build because of package error$$(_end))
 endif
@@ -714,14 +731,14 @@ else ifneq ($(_build_env),)
 
   # setup compile flags for each build path
   override _pkg_flags := $(call _get_pkg_flags,$(sort $(_pkgs)))
-  override _xflags :=  $(_pkg_flags) $(FLAGS) $(FLAGS_$(_$(ENV)_uc))
+  override _xflags :=  $(_pkg_flags) $(FLAGS_$(_$(ENV)_uc)) $(FLAGS)
   override _cxxflags_$(ENV) := $(strip $(_cxx_std) $(_$(ENV)_opt) $(_warn_cxx) $(_op_cxx_warn) $(_define) $(_include) $(_op_cxx_flags) $(_xflags))
   override _cflags_$(ENV) := $(strip $(_c_std) $(_$(ENV)_opt) $(_warn_c) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_xflags))
   override _asflags_$(ENV) := $(strip $(_$(ENV)_opt) $(_op_warn) $(_define) $(_include) $(_op_flags) $(_xflags))
   override _src_path_$(ENV) := $(_src_path)
 
   ifneq ($(_test_labels),)
-    override _test_xflags := $(if $(_pkgs_test),$(call _get_pkg_flags,$(sort $(_pkgs) $(_pkgs_test))),$(_pkg_flags)) $(FLAGS) $(FLAGS_TEST) $(FLAGS_$(_$(ENV)_uc))
+    override _test_xflags := $(if $(_pkgs_test),$(call _get_pkg_flags,$(sort $(_pkgs) $(_pkgs_test))),$(_pkg_flags)) $(FLAGS_$(_$(ENV)_uc)) $(FLAGS) $(FLAGS_TEST)
     override _cxxflags_$(ENV)-tests := $(strip $(_cxx_std) $(_$(ENV)_opt) $(_warn_cxx) $(_op_cxx_warn) $(_op_test_cxx_warn) $(_define) $(_define_test) $(_include) $(_include_test) $(_op_cxx_flags) $(_op_test_cxx_flags) $(_test_xflags))
     override _cflags_$(ENV)-tests := $(strip $(_c_std) $(_$(ENV)_opt) $(_warn_c) $(_op_warn) $(_op_test_warn) $(_define) $(_define_test) $(_include) $(_include_test) $(_op_flags) $(_op_test_flags) $(_test_xflags))
     override _asflags_$(ENV)-tests := $(strip $(_$(ENV)_opt) $(_op_warn) $(_op_test_warn) $(_define) $(_define_test) $(_include) $(_include_test) $(_op_flags) $(_op_test_flags) $(_test_xflags))
@@ -868,7 +885,7 @@ else ifneq ($(_build_env),)
   override _$1_xlibs := $$(call _format_libs,$$(_$1_libs) $$(_$1_req_libs1) $$(_$1_req_libs2))
 
   # NOTE: LIBS before PACKAGES libs in case included static lib requires package
-  override _$1_xflags := $$(_$1_pkg_flags) $$(_$1_flags) $$(FLAGS_$$(_$$(ENV)_uc))
+  override _$1_xflags := $$(_$1_pkg_flags) $$(FLAGS_$$(_$$(ENV)_uc)) $$(_$1_flags)
   override _cxxflags_$$(ENV)-$1 := $$(strip $$(_$1_cxx_std) $$(call _$$(ENV)_opt,$1) $$(_warn_cxx) $$(_$1_op_cxx_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_cxx_flags) $$(_$1_xflags))
   override _cflags_$$(ENV)-$1 := $$(strip $$(_$1_c_std) $$(call _$$(ENV)_opt,$1) $$(_warn_c) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_xflags))
   override _asflags_$$(ENV)-$1 := $$(strip $$(call _$$(ENV)_opt,$1) $$(_$1_op_warn) $$(_$1_define) $$(_$1_include) $$(_$1_op_flags) $$(_$1_xflags))
@@ -993,11 +1010,11 @@ endef
 $(foreach e,$(_env_names),$(eval $(call _setup_env_targets,$e)))
 
 
-ifneq ($(filter clean,$(MAKECMDGOALS)),)
-  override _clean_files := $(foreach f,$(CLEAN_EXTRA),$(call _do_wildcard,$f))
-else ifneq ($(filter clobber,$(MAKECMDGOALS)),)
+ifneq ($(filter clobber,$(MAKECMDGOALS)),)
   override _clean_files := $(foreach e,$(_env_names),$(_$e_libbin_targets) $(_$e_links) $(_$e_file_targets)) $(foreach f,$(CLEAN_EXTRA) $(CLOBBER_EXTRA),$(call _do_wildcard,$f)) core gmon.out
   override _clean_dirs := $(foreach d,$(sort $(filter-out ./,$(foreach e,$(_env_names),$(foreach x,$(_$e_libbin_targets) $(_$e_file_targets),$(dir $x))))),"$d")
+else ifneq ($(filter clean,$(MAKECMDGOALS)),)
+  override _clean_files := $(foreach f,$(CLEAN_EXTRA),$(call _do_wildcard,$f))
 endif
 
 clean:
@@ -1169,57 +1186,51 @@ endif
 endef
 
 
-override define _make_dep  # <1:path> <2:build> <3:src> <4:cmd trigger>
-$1/$(call _src_oname,$3): $$(_src_path_$2)$3 $1/$4 $$(_triggers_$2) | $$(_symlinks)
--include $1/$(call _src_bname,$3).mk
+override define _make_dep  # <1:path> <2:build> <3:source dir> <4:src file> <5:cmd file>
+$1/$(call _src_oname,$4): $3$4 $1/$5 $$(_triggers_$2) | $$(_symlinks)
+-include $1/$(call _src_bname,$4).mk
 endef
 
 
-override define _make_dep2  # <1:path> <2:build> <3:src> <4:cmd trigger>
-$1/$(call _src_oname,$3): $3 $1/$4 $$(_triggers_$2) | $$(_symlinks)
--include $1/$(call _src_bname,$3).mk
-endef
-
-
-override define _make_obj  # <1:path> <2:build> <3:flags> <4:src list> <5:other src>
+override define _make_objs  # <1:path> <2:build> <3:flags> <4:src list> <5:src2 list>
 $1: ; @mkdir -p "$$@"
 $1/%.mk: ; @$$(RM) "$$(@:.mk=.o)"
 
-override _all_source_base_$2 := $$(call _src_bname,$4 $5)
-ifneq ($$(words $$(_all_source_base_$2)),$$(words $$(sort $$(_all_source_base_$2))))
+ifneq ($(words $4 $5),$(words $(sort $(call _src_bname,$4 $5))))
   $$(error $$(_msgErr)Conflicting object files for $2 - each source file basename must be unique$$(_end))
 endif
 
-ifneq ($$(filter $$(_c_ptrn),$4 $5),)
+ifneq ($(filter $(_c_ptrn),$4 $5),)
 $$(eval $$(call _rebuild_check,$1/.compile_cmd_c,$$(_cc) $$(_cflags_$2) $3))
 $(addprefix $1/,$(call _src_oname,$(filter $(_c_ptrn),$4 $5))): | $1
 	$$(strip $$(_cc) $$(_cflags_$2) $3) -MMD -MP -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_c_ptrn),$4),\
-  $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd_c)))
+  $$(eval $$(call _make_dep,$1,$2,$$(_src_path_$2),$x,.compile_cmd_c)))
 $(foreach x,$(filter $(_c_ptrn),$5),\
-  $$(eval $$(call _make_dep2,$1,$2,$x,.compile_cmd_c)))
+  $$(eval $$(call _make_dep,$1,$2,,$x,.compile_cmd_c)))
 endif
 
-ifneq ($$(filter $$(_asm_ptrn),$4 $5),)
+ifneq ($(filter $(_asm_ptrn),$4 $5),)
 $$(eval $$(call _rebuild_check,$1/.compile_cmd_s,$$(_as) $$(_asflags_$2) $3))
 $(addprefix $1/,$(call _src_oname,$(filter $(_asm_ptrn),$4 $5))): | $1
 	$$(strip $$(_as) $$(_asflags_$2) $3) -MMD -MP -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_asm_ptrn),$4),\
-  $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd_s)))
+  $$(eval $$(call _make_dep,$1,$2,$$(_src_path_$2),$x,.compile_cmd_s)))
 $(foreach x,$(filter $(_asm_ptrn),$5),\
-  $$(eval $$(call _make_dep2,$1,$2,$x,.compile_cmd_s)))
+  $$(eval $$(call _make_dep,$1,$2,,$x,.compile_cmd_s)))
 endif
 
-ifneq ($$(filter $$(_cxx_ptrn),$4 $5),)
+ifneq ($(filter $(_cxx_ptrn),$4 $5),)
 $$(eval $$(call _rebuild_check,$1/.compile_cmd,$$(_cxx) $$(_cxxflags_$2) $3))
 $(addprefix $1/,$(call _src_oname,$(filter $(_cxx_ptrn),$4 $5))): | $1
 	$$(strip $$(_cxx) $$(_cxxflags_$2) $3) -MMD -MP -MF '$$(@:.o=.mk)' -c -o '$$@' $$<
 $(foreach x,$(filter $(_cxx_ptrn),$4),\
-  $$(eval $$(call _make_dep,$1,$2,$x,.compile_cmd)))
+  $$(eval $$(call _make_dep,$1,$2,$$(_src_path_$2),$x,.compile_cmd)))
 $(foreach x,$(filter $(_cxx_ptrn),$5),\
-  $$(eval $$(call _make_dep2,$1,$2,$x,.compile_cmd)))
+  $$(eval $$(call _make_dep,$1,$2,,$x,.compile_cmd)))
 endif
 endef
+
 
 override _nonpic_labels := $(if $(_pic_flag),$(_static_lib_labels),$(_lib_labels)) $(_bin_labels) $(_test_labels)
 override _pic_labels := $(if $(_pic_flag),$(_shared_lib_labels))
@@ -1259,11 +1270,11 @@ ifneq ($(_build_env),)
 
   # make .o/.mk files for each build path
   $(foreach b,$(sort $(foreach x,$(_nonpic_labels),$(_$x_build))),\
-    $(eval $(call _make_obj,$(_build_dir)/$b,$b,,$(call _get_src,$b),$(call _get_src2,$b))))
+    $(eval $(call _make_objs,$(_build_dir)/$b,$b,,$(call _get_src,$b),$(call _get_src2,$b))))
 
   # use unique build path for all PIC compiled code
   $(foreach b,$(sort $(foreach x,$(_pic_labels),$(_$x_build))),\
-    $(eval $(call _make_obj,$(_build_dir)/$b-pic,$b,$(_pic_flag),$(call _get_pic_src,$b),$(call _get_pic_src2,$b))))
+    $(eval $(call _make_objs,$(_build_dir)/$b-pic,$b,$(_pic_flag),$(call _get_pic_src,$b),$(call _get_pic_src2,$b))))
   endif
 
   # make binary/library/test build targets

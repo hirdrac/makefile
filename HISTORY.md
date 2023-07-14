@@ -1,5 +1,10 @@
 # Version release history
 
+## 2.0 - major release (2023/7/10)
+CHANGES:
+* The software license has been modified to prevent use in the training of machine learning algorithms.
+* FLAGS_RELEASE/FLAGS_DEBUG/FLAGS_PROFILE settings are now applied before FLAGS/FLAGS_TEST and target specific FLAGS settings.
+
 ## 1.26 - general release (2023/6/4)
 NEW FEATURES:
 * Added OPTIONS_TEST for additional options on test builds.
