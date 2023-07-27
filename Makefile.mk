@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 2.0 (2023/7/10)
+# Makefile.mk - version 2.1 (2023/7/23)
 # Copyright (C) 2023 Richard Bradley
 #
 # Additional contributions from:
@@ -126,6 +126,7 @@
 #  FLAGS_RELEASE   additional compiler flags for release builds
 #  FLAGS_DEBUG     additional compiler flags for debug builds
 #  FLAGS_PROFILE   additional compiler flags for profile builds
+#  RPATH           directories to search for shared library loading
 #  LINK_FLAGS      additional linking flags not otherwise specified
 #  *_EXTRA         available for most settings to provide additional values
 #
@@ -145,8 +146,8 @@
 #  EXCLUDE_TARGETS labels/files not built by default (wildcard '*' allowed)
 #
 #  Settings STANDARD/OPT_LEVEL/OPT_LEVEL_DEBUG/SUBSYSTEM/PACKAGES/INCLUDE/LIBS/
-#    DEFINE/OPTIONS/FLAGS/LINK_FLAGS/SOURCE_DIR can be set for specific targets
-#    to override global values (ex.: BIN1.FLAGS = -pthread).
+#    DEFINE/OPTIONS/FLAGS/RPATH/LINK_FLAGS/SOURCE_DIR can be set for specific
+#    targets to override global values (ex.: BIN1.FLAGS = -pthread).
 #    A value of '-' can be used to clear the setting for the target
 #    (note that FLAGS_RELEASE/FLAGS_DEBUG/FLAGS_PROFILE are always applied)
 #
@@ -217,7 +218,7 @@ override BUILD_TMP := BUILD_TMP_NOT_SET
 override LIBPREFIX := lib
 
 # apply *_EXTRA setting values (WARN_EXTRA handled above)
-$(foreach x,WARN_C WARN_CXX PACKAGES PACKAGES_TEST INCLUDE INCLUDE_TEST LIBS LIBS_TEST DEFINE DEFINE_TEST OPTIONS OPTIONS_TEST FLAGS FLAGS_TEST FLAGS_RELEASE FLAGS_DEBUG FLAGS_PROFILE LINK_FLAGS EXCLUDE_TARGETS,\
+$(foreach x,WARN_C WARN_CXX PACKAGES PACKAGES_TEST INCLUDE INCLUDE_TEST LIBS LIBS_TEST DEFINE DEFINE_TEST OPTIONS OPTIONS_TEST FLAGS FLAGS_TEST FLAGS_RELEASE FLAGS_DEBUG FLAGS_PROFILE RPATH LINK_FLAGS EXCLUDE_TARGETS,\
   $(if $($x_EXTRA),$(eval override $x += $($x_EXTRA))))
 
 # prevent duplicate options being applied to tests
@@ -511,7 +512,7 @@ endef
 $(foreach x,$(_lib_labels) $(_bin_labels),$(eval $(call _check_name,$x)))
 
 # target setting patterns
-override _bin_ptrn := %.SRC %.SRC2 %.OBJS %.LIBS %.STANDARD %.OPT_LEVEL %.OPT_LEVEL_DEBUG %.DEFINE %.INCLUDE %.FLAGS %.LINK_FLAGS %.PACKAGES %.OPTIONS %.DEPS %.SUBSYSTEM %.SOURCE_DIR
+override _bin_ptrn := %.SRC %.SRC2 %.OBJS %.LIBS %.STANDARD %.OPT_LEVEL %.OPT_LEVEL_DEBUG %.DEFINE %.INCLUDE %.FLAGS %.RPATH %.LINK_FLAGS %.PACKAGES %.OPTIONS %.DEPS %.SUBSYSTEM %.SOURCE_DIR
 override _lib_ptrn := %.TYPE %.VERSION $(_bin_ptrn)
 override _test_ptrn := %.ARGS $(_bin_ptrn)
 
@@ -595,7 +596,6 @@ override _output_lib_dir = $(patsubst %/,%,$(or $(strip $(OUTPUT_LIB_DIR)),$(str
   # output dirs can contain variables like '$(ENV)'
 
 override _src_path := $(if $(SOURCE_DIR),$(filter-out ./,$(SOURCE_DIR:%/=%)/))
-override _symlinks := $(addprefix $(_src_path),$(SYMLINKS))
 
 # output target name generation macros - <1:build env> <2:label>
 override _gen_bin_name = $(_$1_bdir)$($2)$(_$1_bsfx)$(_binext)
@@ -811,7 +811,8 @@ else ifneq ($(_build_env),)
   override _$1_src_objs := $$(call _src_oname,$$(_$1_src) $$(_$1_src2))
 
   ifneq ($$(strip $$($1.OBJS)),-)
-    override _$1_other_objs := $$(foreach x,$$($1.OBJS),$$(if $$(filter $$x,$$(_lib_labels)),\
+    override _$1_objs := $$(filter-out $1,$$($1.OBJS))
+    override _$1_other_objs := $$(foreach x,$$(_$1_objs),$$(if $$(filter $$x,$$(_lib_labels)),\
       $$(or $$(_$$x_name),$$(error $$(_msgErr)$1.OBJS: static type required for library '$$x'$$(_end))),$$(call _do_wildcard,$$x,)))
   endif
 
@@ -820,6 +821,9 @@ else ifneq ($(_build_env),)
   endif
 
   override _$1_link_flags := $(if $(_linker),-fuse-ld=$(_linker))
+  ifneq ($$(strip $$($1.RPATH)),-)
+    override _$1_link_flags += $$(foreach x,$$(or $$($1.RPATH),$$(RPATH)),-Wl,-rpath=$$x)
+  endif
   ifneq ($$(strip $$($1.LINK_FLAGS)),-)
     override _$1_link_flags += $$(or $$($1.LINK_FLAGS),$$(LINK_FLAGS))
   endif
@@ -867,22 +871,17 @@ else ifneq ($(_build_env),)
 
   ## general entry setting parsing (post)
   override define _build_entry2  # <1:label> <2:test flag>
-  override _$1_req_pkgs1 := $$(foreach x,$$(_$1_libs),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_pkgs)))
-  override _$1_req_libs1 := $$(filter-out $1,$$(foreach x,$$(_$1_libs),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_libs))))
+  override _$1_req_pkgs := $$(foreach x,$$(_$1_libs) $$(_$1_objs),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_pkgs)))
+  override _$1_req_libs := $$(filter-out $1,$$(foreach x,$$(_$1_libs) $$(_$1_objs),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_libs))))
   override _$1_link_deps := $$(foreach x,$$(_$1_libs),$$(if $$(filter $$x,$$(_lib_labels)),$$(or $$(_$$x_shared_name),$$(_$$x_name))))
 
-  ifneq ($$(strip $$($1.OBJS)),-)
-    override _$1_req_pkgs2 := $$(foreach x,$$($1.OBJS),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_pkgs)))
-    override _$1_req_libs2 := $$(filter-out $1,$$(foreach x,$$($1.OBJS),$$(if $$(filter $$x,$$(_lib_labels)),$$(_$$x_libs))))
-  endif
-
-  override _$1_xpkgs := $$(sort $$(_$1_pkgs) $$(_$1_req_pkgs1) $$(_$1_req_pkgs2))
+  override _$1_xpkgs := $$(sort $$(_$1_pkgs) $$(_$1_req_pkgs))
   ifneq ($$(_$1_xpkgs),)
     override _$1_pkg_libs := $$(call _get_pkg_libs,$$(_$1_xpkgs))
     override _$1_pkg_flags := $$(call _get_pkg_flags,$$(_$1_xpkgs))
   endif
 
-  override _$1_xlibs := $$(call _format_libs,$$(_$1_libs) $$(_$1_req_libs1) $$(_$1_req_libs2))
+  override _$1_xlibs := $$(call _format_libs,$$(_$1_libs) $$(_$1_req_libs))
 
   # NOTE: LIBS before PACKAGES libs in case included static lib requires package
   override _$1_xflags := $$(_$1_pkg_flags) $$(FLAGS_$$(_$$(ENV)_uc)) $$(_$1_flags)
@@ -948,14 +947,11 @@ else ifneq ($(_build_env),)
       $(eval override DEP$n = $(word $n,$(_$x_deps))))\
     $(eval override _$x_command := $(value $x.CMD)))
 
-  # binaries depend on lib goals to make sure libs are built first
-  override _lib_goals :=\
-    $(foreach x,$(_static_lib_labels),$(if $(filter $(_$x_aliases) $(_$x_name),$(_$(ENV)_goals)),$(_$x_name)))\
-    $(foreach x,$(_shared_lib_labels),$(if $(filter $(_$x_shared_aliases) $(_$x_shared_name),$(_$(ENV)_goals)),$(_$x_shared_name)))
-  # tests depend on lib & bin goals to make sure they always build/run last
-  override _bin_goals :=\
-    $(foreach x,$(_bin_labels),$(if $(filter $(_$x_aliases) $(_$x_name),$(_$(ENV)_goals)),$(_$x_name)))
-  # if tests are a stated target, build all test binaries before running them
+  # tests depend on lib/bin/file goals to make sure they always build/run last
+  override _build_goals :=\
+    $(foreach x,$(_shared_lib_labels),$(if $(filter $(_$x_shared_aliases) $(_$x_shared_name),$(_$(ENV)_goals)),$(_$x_shared_name)))\
+    $(foreach x,$(_static_lib_labels) $(_bin_labels) $(_file_labels),$(if $(filter $(_$x_aliases) $(_$x_name),$(_$(ENV)_goals)),$(_$x_name)))
+  # running tests depends on all tests being built first
   override _test_goals :=\
     $(foreach x,$(_test_labels),$(if $(filter $(_$x_aliases) tests tests_$(ENV) $(ENV),$(MAKECMDGOALS)),$(_$x_run)))
 endif
@@ -992,7 +988,7 @@ help:
 
 .gitignore:
 	@echo '$(_build_dir)/'
-	@for X in $(sort $(filter-out $(_build_dir)/%,$(foreach e,$(_env_names),$(_$e_libbin_targets) $(_$e_links) $(_$e_file_targets)))); do\
+	@for X in $(sort $(filter-out $(_build_dir)/%,$(SYMLINKS) $(foreach e,$(_env_names),$(_$e_libbin_targets) $(_$e_links) $(_$e_file_targets)))); do\
 	  echo "$$X"; done
 
 override define _setup_env_targets  # <1:build env>
@@ -1018,7 +1014,7 @@ else ifneq ($(filter clean,$(MAKECMDGOALS)),)
 endif
 
 clean:
-	@$(RM) "$(_build_dir)/".*_ver $(foreach x,$(_symlinks),"$x")
+	@$(RM) "$(_build_dir)/".*_ver $(foreach x,$(SYMLINKS),"$x")
 	@for X in $(filter-out $(MAKEFILE_LIST),$(_clean_files)); do\
 	  (([ -f "$$X" ] || [ -h "$$X" ]) && echo "$(_msgWarn)Removing '$$X'$(_end)" && $(RM) "$$X") || true; done
 	@for X in $(_clean_dirs); do\
@@ -1136,7 +1132,7 @@ endif
 
 .PHONY: $$(_$1_aliases)
 $$(_$1_aliases): $$(_$1_name)
-$$(_$1_name): $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_link_deps) $$(_$1_trigger) $$(_link_trigger) | $$(_lib_goals)
+$$(_$1_name): $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_link_deps) $$(_$1_trigger) $$(_link_trigger)
 	$$(call _make_path,$$@)
 	$$(_$1_link_cmd)
 	@echo "$$(_msgInfo)Binary '$$@' built$$(_end)"
@@ -1169,25 +1165,25 @@ ifneq ($$(_$1_deps),)
 $$(_$1_all_objs): | $$(_$1_deps)
 endif
 
-$$(_$1_run): $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_link_deps) $$(_$1_trigger) $$(_link_trigger) | $$(_lib_goals) $$(_bin_goals)
+$$(_$1_run): $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_link_deps) $$(_$1_trigger) $$(_link_trigger) | $$(_build_goals)
 	$$(_$1_link_cmd)
-ifeq ($$(filter tests tests_$$(ENV) $1$$(SFX),$$(MAKECMDGOALS)),)
-	@LD_LIBRARY_PATH=.:$$$$LD_LIBRARY_PATH ./$$(_$1_run) $$($1.ARGS);\
+ifeq ($$(filter $$(_$1_aliases) tests tests_$$(ENV),$$(MAKECMDGOALS)),)
+	@LD_LIBRARY_PATH=$(or $(_output_lib_dir),.):$$$$LD_LIBRARY_PATH ./$$(_$1_run) $$($1.ARGS);\
 	EXIT_STATUS=$$$$?;\
 	if [[ $$$$EXIT_STATUS -eq 0 ]]; then echo "$$(_bold) [ $$(_fg3)PASSED$$(_fg0) ] - $1$$(SFX)$$(if $$($1), '$$($1)')$$(_end)"; else echo "$$(_bold) [ $$(_fg4)FAILED$$(_fg0) ] - $1$$(SFX)$$(if $$($1), '$$($1)')$$(_end)"; exit $$$$EXIT_STATUS; fi
 endif
 
-.PHONY: $$(_$1_aliases)
-$$(_$1_aliases): $$(_$1_run) | $$(_test_goals)
-ifneq ($$(filter tests tests_$$(ENV) $1$$(SFX),$$(MAKECMDGOALS)),)
-	@LD_LIBRARY_PATH=.:$$$$LD_LIBRARY_PATH ./$$(_$1_run) $$($1.ARGS);\
+.PHONY: $1$$(SFX)
+$1$$(SFX): $$(_$1_run) | $$(_test_goals)
+ifneq ($$(filter $$(_$1_aliases) tests tests_$$(ENV),$$(MAKECMDGOALS)),)
+	@LD_LIBRARY_PATH=$(or $(_output_lib_dir),.):$$$$LD_LIBRARY_PATH ./$$(_$1_run) $$($1.ARGS);\
 	if [[ $$$$? -eq 0 ]]; then echo "$$(_bold) [ $$(_fg3)PASSED$$(_fg0) ] - $1$$(SFX)$$(if $$($1), '$$($1)')$$(_end)"; else echo "$$(_bold) [ $$(_fg4)FAILED$$(_fg0) ] - $1$$(SFX)$$(if $$($1), '$$($1)')$$(_end)"; $$(RM) "$$(_$1_run)"; fi
 endif
 endef
 
 
 override define _make_dep  # <1:path> <2:build> <3:source dir> <4:src file> <5:cmd file>
-$1/$(call _src_oname,$4): $3$4 $1/$5 $$(_triggers_$2) | $$(_symlinks)
+$1/$(call _src_oname,$4): $3$4 $1/$5 $$(_triggers_$2) | $$(SYMLINKS)
 -include $1/$(call _src_bname,$4).mk
 endef
 
@@ -1247,7 +1243,7 @@ ifneq ($(_build_env),)
   $(_build_dir): ; @mkdir -p "$@"
 
   # symlink creation rule
-  $(foreach x,$(_symlinks),$(eval $x: ; @ln -s . "$x"))
+  $(foreach x,$(SYMLINKS),$(eval $x: ; @ln -s . "$x"))
 
   ifneq ($(_src_labels),)
   # rebuild trigger for compiler version change

@@ -1,5 +1,17 @@
 # Version release history
 
+## 2.1 - minor release (2023/7/23)
+NEW FEATURES:
+* Added RPATH setting for specifying extra search directories for shared library loading.
+
+CHANGES:
+* SYMLINKS setting no longer uses SOURCE_DIR for where to create symlinks; source path should be added manually to setting values where required (note $(BUILD_TMP) is now supported for link paths as well).
+
+FIXES:
+* Fixed running unit tests that link with project shared libraries when OUTPUT_DIR or OUTPUT_LIB_DIR is set.
+* Fixed case where FILE targets could be built after TEST targets for 'make all' (it was always intended for unit test building/running to happen at the end of the make process).
+* Added SYMLINKS values to .gitignore target output.
+
 ## 2.0 - major release (2023/7/10)
 CHANGES:
 * The software license has been modified to prevent use in the training of machine learning algorithms.
