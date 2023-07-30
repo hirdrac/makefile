@@ -1,5 +1,9 @@
 # Version release history
 
+## 2.1.1 - bug fix release (2023/7/28)
+FIXES:
+* Fixed Windows specific issues for project shared library linking and loading for unit tests.
+
 ## 2.1 - minor release (2023/7/23)
 NEW FEATURES:
 * Added RPATH setting for specifying extra search directories for shared library loading.

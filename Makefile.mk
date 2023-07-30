@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 2.1 (2023/7/23)
+# Makefile.mk - version 2.1.1 (2023/7/28)
 # Copyright (C) 2023 Richard Bradley
 #
 # Additional contributions from:
@@ -932,7 +932,8 @@ else ifneq ($(_build_env),)
   # determine LDFLAGS value for each entry
   $(foreach x,$(_shared_lib_labels) $(_bin_labels) $(_test_labels),\
     $(eval override _$x_ldflags :=\
-      -Wl$(_comma)--as-needed$(_comma)--gc-sections -L../..$(if $(_$(ENV)_ldir),/$(_$(ENV)_ldir))\
+      -Wl$(_comma)--as-needed$(_comma)--gc-sections\
+      $(if $(if $(_windows),$(_$(ENV)_bdir),$(_$(ENV)_ldir)),,-L../..)\
       $(if $(_$x_soname),-Wl$(_comma)-h$(_comma)'$(_$x_soname)')\
       $(if $(_$x_implib),-Wl$(_comma)--out-implib$(_comma)'../../$(_$x_implib)')\
       $(if $(_$x_subsystem),-Wl$(_comma)$--subsystem$(_comma)$(_$x_subsystem))\
@@ -1168,7 +1169,7 @@ endif
 $$(_$1_run): $$(_$1_all_objs) $$(_$1_other_objs) $$(_$1_link_deps) $$(_$1_trigger) $$(_link_trigger) | $$(_build_goals)
 	$$(_$1_link_cmd)
 ifeq ($$(filter $$(_$1_aliases) tests tests_$$(ENV),$$(MAKECMDGOALS)),)
-	@LD_LIBRARY_PATH=$(or $(_output_lib_dir),.):$$$$LD_LIBRARY_PATH ./$$(_$1_run) $$($1.ARGS);\
+	@$(if $(_windows),PATH,LD_LIBRARY_PATH)=$(or $(if $(_windows),$(_output_bin_dir),$(_output_lib_dir)),.):$$$$$(if $(_windows),PATH,LD_LIBRARY_PATH) ./$$(_$1_run) $$($1.ARGS);\
 	EXIT_STATUS=$$$$?;\
 	if [[ $$$$EXIT_STATUS -eq 0 ]]; then echo "$$(_bold) [ $$(_fg3)PASSED$$(_fg0) ] - $1$$(SFX)$$(if $$($1), '$$($1)')$$(_end)"; else echo "$$(_bold) [ $$(_fg4)FAILED$$(_fg0) ] - $1$$(SFX)$$(if $$($1), '$$($1)')$$(_end)"; exit $$$$EXIT_STATUS; fi
 endif
@@ -1176,7 +1177,7 @@ endif
 .PHONY: $1$$(SFX)
 $1$$(SFX): $$(_$1_run) | $$(_test_goals)
 ifneq ($$(filter $$(_$1_aliases) tests tests_$$(ENV),$$(MAKECMDGOALS)),)
-	@LD_LIBRARY_PATH=$(or $(_output_lib_dir),.):$$$$LD_LIBRARY_PATH ./$$(_$1_run) $$($1.ARGS);\
+	@$(if $(_windows),PATH,LD_LIBRARY_PATH)=$(or $(if $(_windows),$(_output_bin_dir),$(_output_lib_dir)),.):$$$$$(if $(_windows),PATH,LD_LIBRARY_PATH) ./$$(_$1_run) $$($1.ARGS);\
 	if [[ $$$$? -eq 0 ]]; then echo "$$(_bold) [ $$(_fg3)PASSED$$(_fg0) ] - $1$$(SFX)$$(if $$($1), '$$($1)')$$(_end)"; else echo "$$(_bold) [ $$(_fg4)FAILED$$(_fg0) ] - $1$$(SFX)$$(if $$($1), '$$($1)')$$(_end)"; $$(RM) "$$(_$1_run)"; fi
 endif
 endef
