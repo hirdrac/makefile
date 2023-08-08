@@ -1,5 +1,12 @@
 # Version release history
 
+## 2.2 - minor release (2023/8/5)
+NEW FEATURES:
+* Added 'mapfile' option to generate link map output for built binaries & shared libraries.
+
+FIXES:
+* Binary link commands on Windows no longer have .exe added to the output name to fix issues for cross compiling.
+
 ## 2.1.1 - bug fix release (2023/7/28)
 FIXES:
 * Fixed Windows specific issues for project shared library linking and loading for unit tests.
