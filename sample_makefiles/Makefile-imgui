@@ -1,0 +1,34 @@
+# Makefile for https://github.com/ocornut/imgui.git
+
+imgui_base_src :=\
+  imgui.cpp imgui_demo.cpp imgui_draw.cpp imgui_tables.cpp imgui_widgets.cpp
+
+
+BIN1 = example_sdl2_vulkan
+BIN1.SRC = examples/example_sdl2_vulkan/main.cpp $(imgui_base_src)\
+  backends/imgui_impl_sdl2.cpp backends/imgui_impl_vulkan.cpp
+BIN1.PACKAGES = sdl2 vulkan
+
+BIN2 = example_sdl2_opengl3
+BIN2.SRC = examples/example_sdl2_opengl3/main.cpp $(imgui_base_src)\
+  backends/imgui_impl_sdl2.cpp backends/imgui_impl_opengl3.cpp
+BIN2.PACKAGES = sdl2 opengl
+
+BIN3 = example_glfw_vulkan
+BIN3.SRC = examples/example_glfw_vulkan/main.cpp $(imgui_base_src)\
+  backends/imgui_impl_glfw.cpp backends/imgui_impl_vulkan.cpp
+BIN3.PACKAGES = glfw3 vulkan
+
+BIN4 = example_glfw_opengl3
+BIN4.SRC = examples/example_glfw_opengl3/main.cpp $(imgui_base_src)\
+  backends/imgui_impl_glfw.cpp backends/imgui_impl_opengl3.cpp
+BIN4.PACKAGES = glfw3 opengl
+
+
+INCLUDE = . backends
+WARN_EXTRA = fatal-errors
+
+
+include Makefile.mk
+
+## END

@@ -1,0 +1,11 @@
+# Makefile for https://github.com/hsutter/cppfront.git
+
+BIN_cppfront.SRC = *.cpp
+
+SOURCE_DIR = source
+STANDARD = c++20
+WARN_EXTRA = no-shadow=local no-sign-compare
+
+include Makefile.mk
+
+## END

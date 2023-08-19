@@ -1,0 +1,72 @@
+# Makefile for https://github.com/glfw/glfw.git
+
+# general settings
+WARN_EXTRA = fatal-errors no-missing-field-initializers
+INCLUDE = deps include
+
+# main library
+LIB_glfw = libglfw
+LIB_glfw.TYPE = static
+LIB_glfw.INCLUDE = $(BUILD_TMP)
+LIB_glfw.DEFINE = _GLFW_X11 _GLFW_WAYLAND
+LIB_glfw.LIBS = m
+LIB_glfw.PACKAGES = -
+LIB_glfw.DEPS = $(TEMPLATE_glfw1.ALL_FILES) $(TEMPLATE_glfw2.ALL_FILES)
+LIB_glfw.SOURCE_DIR = src
+LIB_glfw.SRC =\
+  context.c egl_context.c glx_context.c init.c input.c monitor.c null_init.c\
+  null_joystick.c null_monitor.c null_window.c osmesa_context.c platform.c\
+  linux_joystick.c posix_module.c posix_poll.c posix_thread.c posix_time.c\
+  vulkan.c window.c wl_init.c wl_monitor.c wl_window.c\
+  x11_init.c x11_monitor.c x11_window.c xkb_unicode.c
+
+# wayland protocol header generation
+wl_dir := /usr/share/wayland
+wl_protocol_dir := /usr/share/wayland-protocols
+wl_stable_dir := $(wl_protocol_dir)/stable
+wl_unstable_dir := $(wl_protocol_dir)/unstable
+
+TEMPLATE_glfw1 = $$(BUILD_TMP)/wayland-$(VAL1)-protocol.h
+TEMPLATE_glfw1.DEPS = $(VAL2).xml
+TEMPLATE_glfw1.CMD = wayland-scanner client-header $$(DEPS) $$(OUT)
+
+TEMPLATE_glfw1.FILE_wl1 = client $(wl_dir)/wayland
+TEMPLATE_glfw1.FILE_wl2 = idle-inhibit-unstable-v1-client $(wl_unstable_dir)/idle-inhibit/idle-inhibit-unstable-v1
+TEMPLATE_glfw1.FILE_wl3 = pointer-constraints-unstable-v1-client $(wl_unstable_dir)/pointer-constraints/pointer-constraints-unstable-v1
+TEMPLATE_glfw1.FILE_wl4 = relative-pointer-unstable-v1-client $(wl_unstable_dir)/relative-pointer/relative-pointer-unstable-v1
+TEMPLATE_glfw1.FILE_wl5 = viewporter-client $(wl_stable_dir)/viewporter/viewporter
+TEMPLATE_glfw1.FILE_wl6 = xdg-decoration-client $(wl_unstable_dir)/xdg-decoration/xdg-decoration-unstable-v1
+TEMPLATE_glfw1.FILE_wl7 = xdg-shell-client $(wl_stable_dir)/xdg-shell/xdg-shell
+
+TEMPLATE_glfw2 = $$(BUILD_TMP)/wayland-$(VAL1)-protocol-code.h
+TEMPLATE_glfw2.DEPS = $(VAL2).xml
+TEMPLATE_glfw2.CMD = wayland-scanner private-code $$(DEPS) $$(OUT)
+
+TEMPLATE_glfw2.FILE_wl1c = $(TEMPLATE_glfw1.FILE_wl1)
+TEMPLATE_glfw2.FILE_wl2c = $(TEMPLATE_glfw1.FILE_wl2)
+TEMPLATE_glfw2.FILE_wl3c = $(TEMPLATE_glfw1.FILE_wl3)
+TEMPLATE_glfw2.FILE_wl4c = $(TEMPLATE_glfw1.FILE_wl4)
+TEMPLATE_glfw2.FILE_wl5c = $(TEMPLATE_glfw1.FILE_wl5)
+TEMPLATE_glfw2.FILE_wl6c = $(TEMPLATE_glfw1.FILE_wl6)
+TEMPLATE_glfw2.FILE_wl7c = $(TEMPLATE_glfw1.FILE_wl7)
+
+
+# examples
+BIN_boing.SRC = examples/boing.c
+BIN_gears.SRC = examples/gears.c
+BIN_heightmap.SRC = examples/heightmap.c
+BIN_offscreen.SRC = examples/offscreen.c
+BIN_particles.SRC = examples/particles.c deps/tinycthread.c
+BIN_splitview.SRC = examples/splitview.c
+BIN_sharing.SRC = examples/sharing.c
+BIN_triangle-opengl.SRC = examples/triangle-opengl.c
+BIN_triangle-opengles.SRC = examples/triangle-opengles.c
+BIN_wave.SRC = examples/wave.c
+BIN_window.SRC = examples/windows.c
+
+LIBS = LIB_glfw
+
+
+include Makefile.mk
+
+## END

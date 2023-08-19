@@ -1,0 +1,86 @@
+# Makefile for https://github.com/angband/angband.git
+
+LIB_angband = $(BUILD_TMP)/angband
+LIB_angband.SRC =\
+  buildid.c cave.c cave-map.c cave-square.c cave-view.c\
+  cmd-cave.c cmd-core.c cmd-misc.c cmd-obj.c cmd-pickup.c\
+  cmd-spoil.c cmd-wizard.c\
+  datafile.c debug.c\
+  effect-handler-attack.c effect-handler-general.c effects.c effects-info.c\
+  game-event.c game-input.c game-world.c\
+  gen-cave.c gen-chunk.c gen-monster.c gen-room.c gen-util.c generate.c\
+  grafmode.c guid.c init.c load.c message.c\
+  mon-attack.c mon-blows.c mon-desc.c mon-group.c mon-init.c mon-list.c\
+  mon-lore.c mon-make.c mon-move.c mon-msg.c mon-predicate.c mon-spell.c\
+  mon-summon.c mon-timed.c mon-util.c\
+  obj-chest.c obj-curse.c obj-desc.c obj-gear.c obj-ignore.c obj-info.c\
+  obj-init.c obj-knowledge.c obj-list.c obj-make.c obj-pile.c obj-power.c\
+  obj-properties.c obj-randart.c obj-slays.c obj-tval.c obj-util.c\
+  option.c parser.c\
+  player-attack.c player-birth.c player-calcs.c player-class.c player-history.c\
+  player-path.c player-properties.c player-quest.c player-race.c player-spell.c\
+  player-timed.c player-util.c player.c\
+  project-feat.c project-mon.c project-obj.c project-player.c project.c\
+  randname.c\
+  save.c save-charoutput.c savefile.c score.c\
+  sound-core.c source.c store.c target.c trap.c\
+  ui-birth.c ui-command.c ui-context.c ui-curse.c ui-death.c ui-display.c\
+  ui-effect.c ui-entry-combiner.c ui-entry-renderers.c ui-entry.c\
+  ui-equip-cmp.c ui-event.c ui-game.c ui-help.c ui-history.c ui-init.c\
+  ui-input.c ui-keymap.c ui-knowledge.c ui-map.c ui-menu.c ui-mon-list.c\
+  ui-mon-lore.c ui-obj-list.c ui-object.c ui-options.c ui-output.c\
+  ui-player-properties.c ui-player.c ui-prefs.c ui-score.c ui-signals.c\
+  ui-spell.c ui-spoil.c ui-store.c ui-target.c ui-term.c ui-visuals.c\
+  ui-wizard.c\
+  wiz-debug.c wiz-spoil.c wiz-stats.c\
+  z-bitflag.c z-color.c z-dice.c z-expression.c z-file.c z-form.c z-quark.c\
+  z-queue.c z-rand.c z-textblock.c z-type.c z-util.c z-virt.c
+
+
+BIN_sdl2 = angband-sdl2
+BIN_sdl2.SRC = main.c main-sdl2.c
+BIN_sdl2.OBJS = LIB_angband
+BIN_sdl2.PACKAGES = sdl2 SDL2_image SDL2_ttf
+BIN_sdl2.DEFINE = $(DEFINE) USE_SDL2
+
+BIN_gcu = angband-gcu
+BIN_gcu.SRC = main.c main-gcu.c
+BIN_gcu.OBJS = LIB_angband
+BIN_gcu.PACKAGES = ncursesw
+BIN_gcu.DEFINE = $(DEFINE) USE_GCU USE_NCURSES
+
+BIN_x11 = angband-x11
+BIN_x11.SRC = main.c main-x11.c
+BIN_x11.OBJS = LIB_angband
+BIN_x11.PACKAGES = x11
+BIN_x11.DEFINE = $(DEFINE) USE_X11
+
+
+# general settings
+STANDARD = c99
+SOURCE_DIR = src
+INCLUDE = src
+LIBS = m
+DEFINE = $(WIN_DEFINE)
+
+# platform specific
+WINDOWS.WIN_DEFINE = MSYS2_ENCODING_WORKAROUND USE_PRIVATE_PATHS
+
+
+# --- enable spoil ---
+#DEFINE += USE_SPOIL
+#LIB_angband.SRC += main-spoil.c
+
+# --- enable stats ---
+#DEFINE += USE_STATS
+#LIB_angband.SRC += main-stats.c stats/db.c
+#PACKAGES += sqlite3
+
+# --- enable test ---
+#DEFINE += USE_TEST
+#LIB_angband.SRC += main-test.c
+
+
+include Makefile.mk
+
+## END

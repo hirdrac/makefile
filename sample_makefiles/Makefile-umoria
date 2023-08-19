@@ -1,0 +1,32 @@
+# Makefile for https://github.com/dungeons-of-moria/umoria.git
+
+BIN_umoria.SRC = *.cpp
+
+major_ver := $(shell sed -n -E 's/.*CURRENT_VERSION_MAJOR\s*=\s*([0-9]+)*./\1/p' src/version.h)
+minor_ver := $(shell sed -n -E 's/.*CURRENT_VERSION_MINOR\s*=\s*([0-9]+)*./\1/p' src/version.h)
+patch_ver := $(shell sed -n -E 's/.*CURRENT_VERSION_PATCH\s*=\s*([0-9]+)*./\1/p' src/version.h)
+in_version := $(major_ver).$(minor_ver).$(patch_ver)
+in_date := $(shell date +%Y-%m-%d)
+
+FILE1 = data/splash.txt
+FILE1.DEPS = data/splash.txt.in
+FILE1.CMD = sed -e 's/$${umoria_version}/$(in_version)/g' $(DEPS) >$(OUT)
+
+FILE2 = data/versions.txt
+FILE2.DEPS = data/versions.txt.in
+FILE2.CMD = sed -e 's/$${umoria_version}/$(in_version)/g; s/$${current_date}/$(in_date)/g' $(DEPS) >$(OUT)
+
+FILE3 = scores.dat
+FILE3.DEPS = data/scores.dat
+FILE3.CMD = cp $(DEPS) $(OUT)
+
+SOURCE_DIR = src
+PACKAGES = ncurses
+OPTIONS = modern_c++ pedantic
+OPT_LEVEL = 2
+STANDARD = c++14
+WARN_EXTRA = disabled-optimization effc++ cast-align disabled-optimization float-equal inline invalid-pch missing-format-attribute packed redundant-decls switch-default switch-enum unreachable-code
+
+include Makefile.mk
+
+## END

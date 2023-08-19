@@ -1,0 +1,30 @@
+# Makefile for https://github.com/tmewett/BrogueCE.git
+
+LIB_brogue = $(BUILD_TMP)/brogue
+LIB_brogue.SOURCE_DIR = src/brogue
+LIB_brogue.SRC = *.c
+
+BIN1 = bin/brogue
+BIN1.SOURCE_DIR = src/platform
+BIN1.SRC = main.c platformdependent.c null-platform.c\
+  sdl2-platform.c tiles.c\
+  curses-platform.c term.c\
+  web-platform.c
+BIN1.OBJS = LIB_brogue
+BIN1.DEFINE = $(DEFINE) DATADIR=. BROGUE_SDL BROGUE_CURSES BROGUE_WEB
+BIN1.PACKAGES = sdl2 SDL2_image ncurses
+
+
+extra_version := $(shell tools/git-extra-version)
+
+STANDARD = c99
+DEFINE = BROGUE_EXTRA_VERSION="$(extra_version)"
+INCLUDE = src/brogue src/platform
+LIBS = m
+WARN_EXTRA = no-discarded-qualifiers no-parentheses no-sign-compare\
+  no-missing-field-initializers no-format-overflow no-type-limits\
+  no-stringop-overflow no-stringop-overread
+
+include Makefile.mk
+
+## END
