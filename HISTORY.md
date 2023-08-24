@@ -1,5 +1,16 @@
 # Version release history
 
+## 2.3 - minor release (2023/8/21)
+NEW FEATURES:
+* Added support for Windows RC source files (ignored for non-Windows platforms).
+* Added support for c23/gnu23 standards.
+
+CHANGES:
+* SOURCE_DIR now supports ENV/BUILD_TMP environment variables.
+
+FIXES:
+* Fixed platform specific *_EXTRA settings (i.e. WINDOWS.WARN_EXTRA = ...).
+
 ## 2.2 - minor release (2023/8/5)
 NEW FEATURES:
 * Added 'mapfile' option to generate link map output for built binaries & shared libraries.
