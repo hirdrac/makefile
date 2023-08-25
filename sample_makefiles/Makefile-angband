@@ -55,6 +55,12 @@ BIN_x11.OBJS = LIB_angband
 BIN_x11.PACKAGES = x11
 BIN_x11.DEFINE = $(DEFINE) USE_X11
 
+WINDOWS.BIN_win = angband-win
+WINDOWS.BIN_win.SRC = win/angband.rc main.c main-win.c win/readdib.c win/readpng.c win/scrnshot.c win/win-layout.c
+WINDOWS.BIN_win.OBJS = LIB_angband
+WINDOWS.BIN_win.PACKAGES = libpng
+WINDOWS.BIN_win.LIBS = -mwindows -lwinmm -lmsimg32
+WINDOWS.BIN_win.DEFINE = $(DEFINE) USE_WIN
 
 # general settings
 STANDARD = c99
