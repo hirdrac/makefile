@@ -6,14 +6,14 @@ major_ver := $(shell sed -n -E 's/.*CURRENT_VERSION_MAJOR\s*=\s*([0-9]+)*./\1/p'
 minor_ver := $(shell sed -n -E 's/.*CURRENT_VERSION_MINOR\s*=\s*([0-9]+)*./\1/p' src/version.h)
 patch_ver := $(shell sed -n -E 's/.*CURRENT_VERSION_PATCH\s*=\s*([0-9]+)*./\1/p' src/version.h)
 in_version := $(major_ver).$(minor_ver).$(patch_ver)
-in_date := $(shell date +%Y-%m-%d)
+in_date = $(shell date +%Y-%m-%d -r umoria)
 
 FILE1 = data/splash.txt
 FILE1.DEPS = data/splash.txt.in
 FILE1.CMD = sed -e 's/$${umoria_version}/$(in_version)/g' $(DEPS) >$(OUT)
 
 FILE2 = data/versions.txt
-FILE2.DEPS = data/versions.txt.in
+FILE2.DEPS = data/versions.txt.in BIN_umoria
 FILE2.CMD = sed -e 's/$${umoria_version}/$(in_version)/g; s/$${current_date}/$(in_date)/g' $(DEPS) >$(OUT)
 
 FILE3 = scores.dat
