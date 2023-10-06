@@ -19,7 +19,7 @@ extra_version := $(shell tools/git-extra-version)
 
 STANDARD = c99
 DEFINE = BROGUE_EXTRA_VERSION="$(extra_version)"
-INCLUDE = src/brogue src/platform
+INCLUDE = src/brogue src/platform src/variants
 LIBS = m
 WARN_EXTRA = no-discarded-qualifiers no-parentheses no-sign-compare\
   no-missing-field-initializers no-format-overflow no-type-limits\
