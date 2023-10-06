@@ -3,6 +3,7 @@
 LIB_brogue = $(BUILD_TMP)/brogue
 LIB_brogue.SOURCE_DIR = src/brogue
 LIB_brogue.SRC = *.c
+LIB_brogue.SRC2 = src/variants/*.c
 
 BIN1 = bin/brogue
 BIN1.SOURCE_DIR = src/platform
