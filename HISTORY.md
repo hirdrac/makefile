@@ -1,5 +1,13 @@
 # Version release history
 
+## 2.4 - minor release (2023/10/6)
+NEW FEATURES:
+* WARN/WARN_C/WARN_CXX/LINKER can now be set on specific targets.
+* SYMLINKS now allows specifying target with <name>=<target> (<name> without '=<target>' still uses '.' as the target).
+
+CHANGES:
+* COMPILER not checked for invalid values for non-build targets.
+
 ## 2.3 - minor release (2023/8/21)
 NEW FEATURES:
 * Added support for Windows RC source files (ignored for non-Windows platforms).
