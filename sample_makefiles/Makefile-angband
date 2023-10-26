@@ -1,10 +1,11 @@
 # Makefile for https://github.com/angband/angband.git
 
 LIB_angband = $(BUILD_TMP)/angband
+LIB_angband.LIBS = -
 LIB_angband.SRC =\
-  buildid.c cave.c cave-map.c cave-square.c cave-view.c\
-  cmd-cave.c cmd-core.c cmd-misc.c cmd-obj.c cmd-pickup.c\
-  cmd-spoil.c cmd-wizard.c\
+  borg/*.c buildid.c\
+  cave.c cave-map.c cave-square.c cave-view.c cmd-cave.c\
+  cmd-core.c cmd-misc.c cmd-obj.c cmd-pickup.c cmd-spoil.c cmd-wizard.c\
   datafile.c debug.c\
   effect-handler-attack.c effect-handler-general.c effects.c effects-info.c\
   game-event.c game-input.c game-world.c\
