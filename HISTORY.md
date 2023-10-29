@@ -1,5 +1,10 @@
 # Version release history
 
+## 2.5 - minor release (2023/10/24)
+CHANGES:
+* Header files specified in <X>.SRC/SRC2 are ignored.
+* Error detection improvements for source file configs.
+
 ## 2.4 - minor release (2023/10/6)
 NEW FEATURES:
 * WARN/WARN_C/WARN_CXX/LINKER can now be set on specific targets.
