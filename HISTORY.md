@@ -1,5 +1,9 @@
 # Version release history
 
+## 2.5.1 - bug fix release (2023/12/6)
+FIXES:
+* Fixed linking error when linking with project shared lib on Linux if LIBx.VERSION is set.
+
 ## 2.5 - minor release (2023/10/24)
 CHANGES:
 * Header files specified in <X>.SRC/SRC2 are ignored.

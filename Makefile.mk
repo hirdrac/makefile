@@ -1,5 +1,5 @@
 #
-# Makefile.mk - version 2.5 (2023/10/24)
+# Makefile.mk - version 2.5.1 (2023/12/6)
 # Copyright (C) 2023 Richard Bradley
 #
 # Additional contributions from:
@@ -594,6 +594,7 @@ override _gen_static_lib_name = $(_$1_ldir)$($2)$(_$1_lsfx).a
 override _gen_static_lib_aliases = $($2)$(_$1_sfx) $(if $(_$1_ldir),$($2)$(_$1_sfx).a)
 override _gen_implib_name = $(_$1_ldir)$($2)$(_$1_lsfx).dll.a
 override _gen_shared_lib_name = $(if $(_windows),$(_$1_bdir)$($2)$(_$1_bsfx)$(if $(_$2_major_ver),-$(_$2_major_ver)).dll,$(_$1_ldir)$($2)$(_$1_lsfx).so$(if $($2.VERSION),.$($2.VERSION)))
+override _gen_shared_lib_linkname = $(if $(_windows),$(_$1_bdir)$($2)$(_$1_bsfx)$(if $(_$2_major_ver),-$(_$2_major_ver)).dll,$(_$1_ldir)$($2)$(_$1_lsfx).so$(if $(_$2_major_ver),.$(_$2_major_ver)))
 override _gen_shared_lib_aliases = $($2)$(_$1_sfx) $(if $(or $(if $(_windows),$(_$1_bdir),$(_$1_ldir)),$($2.VERSION)),$($2)$(_$1_sfx)$(_libext))
 override _gen_shared_lib_links = $(if $(_windows),,$(if $($2.VERSION),$(_$1_ldir)$($2)$(_$1_lsfx).so $(if $(_$2_minor_ver),$(_$1_ldir)$($2)$(_$1_lsfx).so.$(_$2_major_ver))))
 
@@ -678,10 +679,10 @@ override _format_define = $(foreach x,$1,$(if $(filter -%,$x),$x,-D'$x'))
 
 override _format_lib_arg =\
 $(if $(filter -% %.a,$1),$1,\
-$(if $(filter ./,$(dir $1)),,-L$(patsubst %/,%,$(dir $1))) -l$(if $(filter %.so %.dll,$1),:)$(notdir $1))
+$(if $(filter ./,$(dir $1)),,-L$(patsubst %/,%,$(dir $1))) -l$(if $(or $(filter %.so %.dll,$1),$(findstring .so.,$1)),:)$(notdir $1))
 
 override _format_libs = $(foreach x,$1,\
-$(call _format_lib_arg,$(if $(filter $x,$(_lib_labels)),$(or $(_$x_shared_name),$(_$x_name)),$x)))
+$(call _format_lib_arg,$(if $(filter $x,$(_lib_labels)),$(or $(_$x_shared_linkname),$(_$x_name)),$x)))
 
 # _do_wildcard: <1:file> <2:basedir>
 override _do_wildcard =\
@@ -768,6 +769,7 @@ else ifneq ($(_build_env),)
   endif
   $(foreach x,$(_shared_lib_labels),\
     $(eval override _$x_shared_name := $(call _gen_shared_lib_name,$(ENV),$x))\
+    $(eval override _$x_shared_linkname := $(call _gen_shared_lib_linkname,$(ENV),$x))\
     $(eval override _$x_shared_aliases := $x$(SFX) $(if $(SFX),$x $($x) $($x)$(_libext)) $(call _gen_shared_lib_aliases,$(ENV),$x))\
     $(if $(_windows),,\
       $(eval override _$x_soname := $(if $(_$x_major_ver),$(notdir $($x)).so.$(_$x_major_ver)))\
