@@ -1,7 +1,7 @@
 # Makefile for https://github.com/angband/angband.git
 
 LIB_angband = $(BUILD_TMP)/angband
-LIB_angband.LIBS = -
+LIB_angband.LIBS = m
 LIB_angband.SRC =\
   borg/*.c buildid.c\
   cave.c cave-map.c cave-square.c cave-view.c cmd-cave.c\
@@ -39,7 +39,7 @@ LIB_angband.SRC =\
 
 
 BIN_sdl2 = angband-sdl2
-BIN_sdl2.SRC = main.c main-sdl2.c
+BIN_sdl2.SRC = main.c main-sdl2.c sdl2/*.c
 BIN_sdl2.OBJS = LIB_angband
 BIN_sdl2.PACKAGES = sdl2 SDL2_image SDL2_ttf
 BIN_sdl2.DEFINE = $(DEFINE) USE_SDL2
@@ -67,7 +67,6 @@ WINDOWS.BIN_win.DEFINE = $(DEFINE) USE_WIN
 STANDARD = c99
 SOURCE_DIR = src
 INCLUDE = src
-LIBS = m
 DEFINE = $(WIN_DEFINE)
 
 # platform specific
