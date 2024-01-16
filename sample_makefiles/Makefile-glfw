@@ -26,19 +26,19 @@ wl_protocol_dir := /usr/share/wayland-protocols
 wl_stable_dir := $(wl_protocol_dir)/stable
 wl_unstable_dir := $(wl_protocol_dir)/unstable
 
-TEMPLATE_glfw1 = $$(BUILD_TMP)/wayland-$(VAL1)-protocol.h
+TEMPLATE_glfw1 = $$(BUILD_TMP)/$(VAL1)-protocol.h
 TEMPLATE_glfw1.DEPS = $(VAL2).xml
 TEMPLATE_glfw1.CMD = wayland-scanner client-header $$(DEPS) $$(OUT)
 
-TEMPLATE_glfw1.FILE_wl1 = client $(wl_dir)/wayland
+TEMPLATE_glfw1.FILE_wl1 = wayland-client $(wl_dir)/wayland
 TEMPLATE_glfw1.FILE_wl2 = idle-inhibit-unstable-v1-client $(wl_unstable_dir)/idle-inhibit/idle-inhibit-unstable-v1
 TEMPLATE_glfw1.FILE_wl3 = pointer-constraints-unstable-v1-client $(wl_unstable_dir)/pointer-constraints/pointer-constraints-unstable-v1
 TEMPLATE_glfw1.FILE_wl4 = relative-pointer-unstable-v1-client $(wl_unstable_dir)/relative-pointer/relative-pointer-unstable-v1
 TEMPLATE_glfw1.FILE_wl5 = viewporter-client $(wl_stable_dir)/viewporter/viewporter
-TEMPLATE_glfw1.FILE_wl6 = xdg-decoration-client $(wl_unstable_dir)/xdg-decoration/xdg-decoration-unstable-v1
+TEMPLATE_glfw1.FILE_wl6 = xdg-decoration-unstable-v1-client $(wl_unstable_dir)/xdg-decoration/xdg-decoration-unstable-v1
 TEMPLATE_glfw1.FILE_wl7 = xdg-shell-client $(wl_stable_dir)/xdg-shell/xdg-shell
 
-TEMPLATE_glfw2 = $$(BUILD_TMP)/wayland-$(VAL1)-protocol-code.h
+TEMPLATE_glfw2 = $$(BUILD_TMP)/$(VAL1)-protocol-code.h
 TEMPLATE_glfw2.DEPS = $(VAL2).xml
 TEMPLATE_glfw2.CMD = wayland-scanner private-code $$(DEPS) $$(OUT)
 
