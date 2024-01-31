@@ -1,7 +1,7 @@
 # Makefile for https://github.com/glfw/glfw.git
 
 # general settings
-WARN_EXTRA = fatal-errors no-missing-field-initializers
+WARN_EXTRA = fatal-errors no-missing-field-initializers no-sign-compare
 INCLUDE = deps include
 
 # main library
@@ -25,6 +25,7 @@ wl_dir := /usr/share/wayland
 wl_protocol_dir := /usr/share/wayland-protocols
 wl_stable_dir := $(wl_protocol_dir)/stable
 wl_unstable_dir := $(wl_protocol_dir)/unstable
+wl_staging_dir := $(wl_protocol_dir)/staging
 
 TEMPLATE_glfw1 = $$(BUILD_TMP)/$(VAL1)-protocol.h
 TEMPLATE_glfw1.DEPS = $(VAL2).xml
@@ -37,6 +38,7 @@ TEMPLATE_glfw1.FILE_wl4 = relative-pointer-unstable-v1-client $(wl_unstable_dir)
 TEMPLATE_glfw1.FILE_wl5 = viewporter-client $(wl_stable_dir)/viewporter/viewporter
 TEMPLATE_glfw1.FILE_wl6 = xdg-decoration-unstable-v1-client $(wl_unstable_dir)/xdg-decoration/xdg-decoration-unstable-v1
 TEMPLATE_glfw1.FILE_wl7 = xdg-shell-client $(wl_stable_dir)/xdg-shell/xdg-shell
+TEMPLATE_glfw1.FILE_wl8 = xdg-activation-v1-client $(wl_staging_dir)/xdg-activation/xdg-activation-v1
 
 TEMPLATE_glfw2 = $$(BUILD_TMP)/$(VAL1)-protocol-code.h
 TEMPLATE_glfw2.DEPS = $(VAL2).xml
@@ -49,6 +51,7 @@ TEMPLATE_glfw2.FILE_wl4c = $(TEMPLATE_glfw1.FILE_wl4)
 TEMPLATE_glfw2.FILE_wl5c = $(TEMPLATE_glfw1.FILE_wl5)
 TEMPLATE_glfw2.FILE_wl6c = $(TEMPLATE_glfw1.FILE_wl6)
 TEMPLATE_glfw2.FILE_wl7c = $(TEMPLATE_glfw1.FILE_wl7)
+TEMPLATE_glfw2.FILE_wl8c = $(TEMPLATE_glfw1.FILE_wl8)
 
 
 # examples
