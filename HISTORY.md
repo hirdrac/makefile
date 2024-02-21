@@ -1,5 +1,14 @@
 # Version release history
 
+## 2.6 - minor release (2024/2/16)
+CHANGES:
+* Specifying a path in a BIN<X>/LIB<X> target name now overrides OUTPUT_DIR/OUTPUT_BIN_DIR/OUTPUT_LIB_DIR config values.
+* Added 'old-style-cast' warning to 'modern_c++' option.
+* Setting WARN to '-' indicates no warnings.  Setting WARN to blank indicates default warnings.
+* WARN_EXTRA flags added at end of other warnings (but before warnings from options).
+* Added FILE<X> value verification like existing BIN<X>/LIB<X> checks. (single value without spaces, no wildcards, no conflicts w/ builtin targets)
+* Minor LIB<X>.VERSION error checking improvements.
+
 ## 2.5.1 - bug fix release (2023/12/6)
 FIXES:
 * Fixed linking error when linking with project shared lib on Linux if LIBx.VERSION is set.
