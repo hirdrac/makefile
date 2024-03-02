@@ -1,7 +1,7 @@
 # Makefile for https://github.com/glfw/glfw.git
 
 # general settings
-WARN_EXTRA = fatal-errors no-missing-field-initializers no-sign-compare
+WARN_EXTRA = fatal-errors no-missing-field-initializers no-sign-compare no-discarded-qualifiers
 INCLUDE = deps include
 
 # main library
