@@ -31,7 +31,7 @@ BIN5.PACKAGES = glfw3 opengl
 
 
 INCLUDE = . backends
-WARN_EXTRA = fatal-errors
+WARN_EXTRA = fatal-errors no-unused-variable
 LIBS = LIB_imgui
 
 
