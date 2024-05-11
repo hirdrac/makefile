@@ -3,7 +3,7 @@
 BIN_cppfront.SRC = source/*.cpp
 
 STANDARD = c++20
-WARN_EXTRA = no-shadow=local no-sign-compare no-nonnull
+WARN_EXTRA = no-shadow=local no-nonnull
 
 include Makefile.mk
 
