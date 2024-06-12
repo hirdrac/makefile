@@ -1,0 +1,108 @@
+# Makefile for https://github.com/SFML/SFML.git
+
+### libraries ###
+LIB_sfml_audio = libsfml-audio
+LIB_sfml_audio.SRC =\
+  AudioResource.cpp AudioDevice.cpp Listener.cpp Miniaudio.cpp\
+  MiniaudioUtils.cpp Music.cpp PlaybackDevice.cpp Sound.cpp SoundBuffer.cpp\
+  SoundBufferRecorder.cpp InputSoundFile.cpp OutputSoundFile.cpp\
+  SoundRecorder.cpp SoundSource.cpp SoundStream.cpp\
+  SoundFileFactory.cpp SoundFileReaderFlac.cpp SoundFileReaderMp3.cpp\
+  SoundFileReaderOgg.cpp SoundFileReaderWav.cpp SoundFileWriterFlac.cpp\
+  SoundFileWriterOgg.cpp SoundFileWriterWav.cpp
+LIB_sfml_audio.SOURCE_DIR = src/SFML/Audio
+LIB_sfml_audio.PACKAGES = vorbis vorbisfile vorbisenc ogg flac
+LIB_sfml_audio.INCLUDE = include src extlibs/headers/miniaudio extlibs/headers/minimp3
+
+
+LIB_sfml_graphics = libsfml-graphics
+LIB_sfml_graphics.SRC =\
+  BlendMode.cpp Font.cpp Glsl.cpp GLCheck.cpp GLExtensions.cpp Image.cpp\
+  RenderStates.cpp RenderTexture.cpp RenderTarget.cpp RenderWindow.cpp\
+  Shader.cpp StencilMode.cpp Texture.cpp TextureSaver.cpp Transform.cpp\
+  Transformable.cpp View.cpp\
+  Shape.cpp CircleShape.cpp RectangleShape.cpp ConvexShape.cpp Sprite.cpp\
+  Text.cpp VertexArray.cpp VertexBuffer.cpp\
+  RenderTextureImplFBO.cpp RenderTextureImplDefault.cpp
+LIB_sfml_graphics.SOURCE_DIR = src/SFML/Graphics
+LIB_sfml_graphics.PACKAGES = freetype2 gl
+LIB_sfml_graphics.INCLUDE = include src extlibs/headers/glad/include extlibs/headers/stb_image
+
+
+LIB_sfml_network = libsfml-network
+LIB_sfml_network.SRC =\
+  Ftp.cpp Http.cpp IpAddress.cpp Packet.cpp Socket.cpp SocketSelector.cpp\
+  TcpListener.cpp TcpSocket.cpp UdpSocket.cpp\
+  Unix/SocketImpl.cpp
+LIB_sfml_network.SOURCE_DIR = src/SFML/Network
+LIB_sfml_network.INCLUDE = include src
+
+
+LIB_sfml_system = libsfml-system
+LIB_sfml_system.SRC =\
+  Clock.cpp Err.cpp Sleep.cpp String.cpp Utils.cpp Vector2.cpp Vector3.cpp\
+  FileInputStream.cpp MemoryInputStream.cpp\
+  Unix/SleepImpl.cpp
+LIB_sfml_system.SOURCE_DIR = src/SFML/System
+LIB_sfml_system.INCLUDE = include src
+
+
+LIB_sfml_window = libsfml-window
+LIB_sfml_window.SRC =\
+  Clipboard.cpp Context.cpp Cursor.cpp GlContext.cpp GlResource.cpp\
+  Joystick.cpp JoystickManager.cpp Keyboard.cpp Mouse.cpp Touch.cpp\
+  Sensor.cpp SensorManager.cpp VideoMode.cpp Vulkan.cpp Window.cpp\
+  WindowBase.cpp WindowImpl.cpp\
+  Unix/CursorImpl.cpp Unix/ClipboardImpl.cpp Unix/InputImpl.cpp\
+  Unix/KeyboardImpl.cpp Unix/KeySymToKeyMapping.cpp\
+  Unix/KeySymToUnicodeMapping.cpp Unix/SensorImpl.cpp Unix/Display.cpp\
+  Unix/VideoModeImpl.cpp Unix/VulkanImplX11.cpp Unix/WindowImplX11.cpp\
+  Unix/GlxContext.cpp Unix/JoystickImpl.cpp
+LIB_sfml_window.SOURCE_DIR = src/SFML/Window
+LIB_sfml_window.INCLUDE = include src extlibs/headers/glad/include extlibs/headers/vulkan
+LIB_sfml_window.PACKAGES = libudev x11 xrandr xcursor xi
+
+
+# DRM version
+#LIB_sfml_window = libsfml-window
+#LIB_sfml_window.SRC =\
+#  Clipboard.cpp Context.cpp Cursor.cpp GlContext.cpp GlResource.cpp\
+#  Joystick.cpp JoystickManager.cpp Keyboard.cpp Mouse.cpp Touch.cpp\
+#  Sensor.cpp SensorManager.cpp VideoMode.cpp Vulkan.cpp Window.cpp\
+#  WindowBase.cpp WindowImpl.cpp\
+#  EGLCheck.cpp DRM/CursorImpl.cpp DRM/ClipboardImpl.cpp Unix/SensorImpl.cpp\
+#  DRM/InputImpl.cpp DRM/VideoModeImpl.cpp DRM/DRMContext.cpp\
+#  DRM/WindowImplDRM.cpp Unix/JoystickImpl.cpp
+#LIB_sfml_window.SOURCE_DIR = src/SFML/Window
+#LIB_sfml_window.DEFINE = SFML_USE_DRM
+#LIB_sfml_window.INCLUDE = include src extlibs/headers/glad/include extlibs/headers/vulkan
+#LIB_sfml_window.PACKAGES = libdrm gbm libudev
+
+
+### examples ###
+# opengl
+BIN_example_opengl.SRC = examples/opengl/OpenGL.cpp
+BIN_example_opengl.LIBS =\
+  LIB_sfml_graphics LIB_sfml_window LIB_sfml_system
+BIN_example_opengl.INCLUDE = . include examples/include
+
+# island
+BIN_example_island.SRC = examples/island/Island.cpp
+BIN_example_island.LIBS =\
+  LIB_sfml_graphics LIB_sfml_window LIB_sfml_system
+BIN_example_island.INCLUDE = include examples/include examples/island
+
+# shader
+BIN_example_shader.SRC = examples/shader/Shader.cpp
+BIN_example_shader.LIBS =\
+  LIB_sfml_graphics LIB_sfml_window LIB_sfml_system
+BIN_example_shader.INCLUDE = include
+
+# tennis
+BIN_example_tennis.SRC = examples/tennis/Tennis.cpp
+BIN_example_tennis.LIBS =\
+  LIB_sfml_audio LIB_sfml_graphics LIB_sfml_window LIB_sfml_system
+BIN_example_tennis.INCLUDE = include
+
+
+include Makefile.mk
