@@ -13,6 +13,7 @@ LIB_sfml_audio.SRC =\
 LIB_sfml_audio.SOURCE_DIR = src/SFML/Audio
 LIB_sfml_audio.PACKAGES = vorbis vorbisfile vorbisenc ogg flac
 LIB_sfml_audio.INCLUDE = include src extlibs/headers/miniaudio extlibs/headers/minimp3
+LIB_sfml_audio.FLAGS = -fpermissive
 
 
 LIB_sfml_graphics = libsfml-graphics
@@ -40,8 +41,8 @@ LIB_sfml_network.INCLUDE = include src
 
 LIB_sfml_system = libsfml-system
 LIB_sfml_system.SRC =\
-  Clock.cpp Err.cpp Sleep.cpp String.cpp Utils.cpp Vector2.cpp Vector3.cpp\
-  FileInputStream.cpp MemoryInputStream.cpp\
+  Clock.cpp Err.cpp Sleep.cpp String.cpp Utils.cpp\
+  Vector2.cpp Vector3.cpp FileInputStream.cpp MemoryInputStream.cpp\
   Unix/SleepImpl.cpp
 LIB_sfml_system.SOURCE_DIR = src/SFML/System
 LIB_sfml_system.INCLUDE = include src
