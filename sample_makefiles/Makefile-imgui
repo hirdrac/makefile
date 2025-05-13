@@ -4,30 +4,50 @@ LIB_imgui = $(BUILD_TMP)/imgui
 LIB_imgui.SRC = imgui.cpp imgui_demo.cpp imgui_draw.cpp imgui_tables.cpp imgui_widgets.cpp
 
 
-BIN1 = example_sdl2
-BIN1.SRC = examples/example_sdl2_sdlrenderer2/main.cpp\
+# SDL2
+BIN_sdl2 = example_sdl2
+BIN_sdl2.SRC = examples/example_sdl2_sdlrenderer2/main.cpp\
   backends/imgui_impl_sdl2.cpp backends/imgui_impl_sdlrenderer2.cpp
-BIN1.PACKAGES = sdl2
+BIN_sdl2.PACKAGES = sdl2
 
-BIN2 = example_sdl2_vulkan
-BIN2.SRC = examples/example_sdl2_vulkan/main.cpp\
+BIN_sdl2_vk = example_sdl2_vulkan
+BIN_sdl2_vk.SRC = examples/example_sdl2_vulkan/main.cpp\
   backends/imgui_impl_sdl2.cpp backends/imgui_impl_vulkan.cpp
-BIN2.PACKAGES = sdl2 vulkan
+BIN_sdl2_vk.PACKAGES = sdl2 vulkan
 
-BIN3 = example_sdl2_opengl3
-BIN3.SRC = examples/example_sdl2_opengl3/main.cpp\
+BIN_sdl2_gl = example_sdl2_opengl3
+BIN_sdl2_gl.SRC = examples/example_sdl2_opengl3/main.cpp\
   backends/imgui_impl_sdl2.cpp backends/imgui_impl_opengl3.cpp
-BIN3.PACKAGES = sdl2 opengl
+BIN_sdl2_gl.PACKAGES = sdl2 opengl
 
-BIN4 = example_glfw_vulkan
-BIN4.SRC = examples/example_glfw_vulkan/main.cpp\
+
+# SDL3
+BIN_sdl3 = example_sdl3
+BIN_sdl3.SRC = examples/example_sdl3_sdlrenderer3/main.cpp\
+  backends/imgui_impl_sdl3.cpp backends/imgui_impl_sdlrenderer3.cpp
+BIN_sdl3.PACKAGES = sdl3
+
+BIN_sdl3_vk = example_sdl3_vulkan
+BIN_sdl3_vk.SRC = examples/example_sdl3_vulkan/main.cpp\
+  backends/imgui_impl_sdl3.cpp backends/imgui_impl_vulkan.cpp
+BIN_sdl3_vk.PACKAGES = sdl3 vulkan
+
+BIN_sdl3_gl = example_sdl3_opengl3
+BIN_sdl3_gl.SRC = examples/example_sdl3_opengl3/main.cpp\
+  backends/imgui_impl_sdl3.cpp backends/imgui_impl_opengl3.cpp
+BIN_sdl3_gl.PACKAGES = sdl3 opengl
+
+
+# GLFW
+BIN_glfw_vk = example_glfw_vulkan
+BIN_glfw_vk.SRC = examples/example_glfw_vulkan/main.cpp\
   backends/imgui_impl_glfw.cpp backends/imgui_impl_vulkan.cpp
-BIN4.PACKAGES = glfw3 vulkan
+BIN_glfw_vk.PACKAGES = glfw3 vulkan
 
-BIN5 = example_glfw_opengl3
-BIN5.SRC = examples/example_glfw_opengl3/main.cpp\
+BIN_glfw_gl = example_glfw_opengl3
+BIN_glfw_gl.SRC = examples/example_glfw_opengl3/main.cpp\
   backends/imgui_impl_glfw.cpp backends/imgui_impl_opengl3.cpp
-BIN5.PACKAGES = glfw3 opengl
+BIN_glfw_gl.PACKAGES = glfw3 opengl
 
 
 INCLUDE = . backends

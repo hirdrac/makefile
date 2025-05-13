@@ -26,7 +26,7 @@ LIB_sfml_graphics.SRC =\
   Text.cpp VertexArray.cpp VertexBuffer.cpp\
   RenderTextureImplFBO.cpp RenderTextureImplDefault.cpp
 LIB_sfml_graphics.SOURCE_DIR = src/SFML/Graphics
-LIB_sfml_graphics.PACKAGES = freetype2 gl
+LIB_sfml_graphics.PACKAGES = freetype2
 LIB_sfml_graphics.INCLUDE = include src extlibs/headers/glad/include extlibs/headers/stb_image
 
 
@@ -105,5 +105,7 @@ BIN_example_tennis.LIBS =\
   LIB_sfml_audio LIB_sfml_graphics LIB_sfml_window LIB_sfml_system
 BIN_example_tennis.INCLUDE = include
 
+
+DEFINE = SFML_IS_BIG_ENDIAN=0
 
 include Makefile.mk
