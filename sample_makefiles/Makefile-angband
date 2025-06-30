@@ -23,7 +23,7 @@ LIB_angband.SRC =\
   player-timed.c player-util.c player.c\
   project-feat.c project-mon.c project-obj.c project-player.c project.c\
   randname.c\
-  save.c save-charoutput.c savefile.c score.c\
+  save.c save-charoutput.c savefile.c score.c score-util.c\
   sound-core.c source.c store.c target.c trap.c\
   ui-birth.c ui-command.c ui-context.c ui-curse.c ui-death.c ui-display.c\
   ui-effect.c ui-entry-combiner.c ui-entry-renderers.c ui-entry.c\
